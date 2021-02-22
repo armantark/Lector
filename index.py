@@ -6,6 +6,7 @@ import discord
 
 import os
 
+export 
 
 config = bot_config.Config()
 bot = commands.Bot(command_prefix=config.prefix)
