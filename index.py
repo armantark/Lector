@@ -6,11 +6,12 @@ import discord
 
 import os
 
-export 
-
 config = bot_config.Config()
 bot = commands.Bot(command_prefix=config.prefix)
 bot.remove_command('help')
+
+token = os.getenv("token")
+prefix = os.getenv("prefix")
 
 for file in os.listdir('cogs'):
     if file.endswith('.py'):
