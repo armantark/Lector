@@ -1,0 +1,5 @@
+{
+    "prefix"      : "prefix here",
+    "token"       : "token here",
+    "log_webhook" : "optional webhook here"
+}

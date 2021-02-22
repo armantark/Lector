@@ -1,0 +1,27 @@
+{
+    "title" : "Commands",
+
+    "description" : "Try: *<pre>help [command]*",
+
+    "redirects" : {
+        "h" : "help",
+        "l" : "lectionary",
+        "sub" : "subscribe",
+        "unsub" : "unsubscribe"
+    },
+
+    "commands" : {
+
+        "about": "Shows information about the bot: author, version, repo, etc.\n\nExample:```<base>```",
+
+        "help": "Prints a list of availiable commands. If a command is an argument, help for that command is provided. (Alias: 'h'.)\n\nExamples:```<base>\n<base> about```",
+
+        "lectionary" : "Fetches the daily entry for a given lectionary. The lectionary is required as an argument. (Alias: 'l'.)\n\nOptions:\n```Armenian              (a)\nBook of Common Prayer (b)\nCatholic              (c)\nAmerican Orthodox     (ao)\nCoptic Orthodox       (co)\nGreek Orthodox        (go)\nRussian Orthodox      (ro)\nRevised Common        (r)```",
+
+        "subscribe": "Subscribes channels to lectionaries.With no arguments, the guild's subscriptions print.A chosen lectionary may be an argument. A second argument, the channel, is optional, defaulting to where the command was invoked. The manage messages perm is required. (Alias: 'sub'.)\n\nExamples:```<base>\n<base> bcp\n<base> catholic #catholic-lectionary```",
+
+        "unsubscribe": "Unsubscribes channels. If no arguments are passed, all the guild's subscriptions are cleared. If a channel is specified as the first argument, all subscriptions for that channel are cleared. If a lectionary is also specified as a second argument, that specific lectionary subscription in the channel is cancelled. (The manage messages perm is required.) (Alias: 'unsub'.)\n\nExamples```<base>\n<base> #orthodox\n<base> #lectionaries bcp```",
+
+        "time": "Sets the time for the guild's subscriptions. If no argument is provided, the current GMT time is printed. If an arument is provided, it must be a GMT time either in 12-hour or 24-hour formatting, within 7AM and 11PM (7 to 23). (The manage messages perm is required.)\n\nExamples:```<base>\n<base> 10\n<base> 10am```"
+    }
+}
