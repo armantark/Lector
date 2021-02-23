@@ -103,39 +103,65 @@ class OrthodoxCopticLectionary:
 
         links = [bible_url.convert(reading) for reading in self.readings]
 
-        return [
-            {
-                'title':self.title,
-                'description':self.subtitle,
-                'color':0xF2DB87,
-                'footer':{'text':'Copyright © St. Mark\'s Coptic Orthodox Church, Jersey City, NJ.'},
-                'author':{
-                    'name':'Coptic Orthodox Lectionary',
-                    'url':self.url
-                },
-                'fields':[
-                    {
-                        'name':'Vespers',
-                        'value':f'Psalm: {links[0]}\nGospel: {links[1]}'
+        print(links)
+        print(len(links))
+        final = [{
+                    'title':self.title,
+                    'description':self.subtitle,
+                    'color':0xF2DB87,
+                    'footer':{'text':'Copyright © St. Mark\'s Coptic Orthodox Church, Jersey City, NJ.'},
+                    'author':{
+                        'name':'Coptic Orthodox Lectionary',
+                        'url':self.url
                     },
-                    {
-                        'name':'Matins',
-                        'value':f'Psalm: {links[2]}\nGospel: {links[3]}'
-                    },
-                    {
-                        'name':'Liturgy',
-                        'value':(
-                            f'Pauline Epistle: {links[4]}\n'                       +
-                            f'Catholic Epistle: {links[5]}\n'                      +
-                            f'Acts of the Apostles: {links[6]}\n'                  +
-                            f'Synaxarium:\n'                                       +
-                            '\n'.join([f'• {item}' for item in self.synaxarium]) +
-                            '\n'                                                   +
-                            f'Psalm: {links[7]}\n'                                 +
-                            f'Gospel: {links[8]}'
-                        ),
-                        'inline':False
-                    }
-                ]
-            }
-        ]
+                    'fields':[]
+                }]
+        if len(links) > 7:
+            # if there are Vespers
+            final[0]['fields'] = [
+                        {
+                            'name':'Vespers',
+                            'value':f'Psalm: {links[0]}\nGospel: {links[1]}'
+                        },
+                        {
+                            'name':'Matins',
+                            'value':f'Psalm: {links[2]}\nGospel: {links[3]}'
+                        },
+                        {
+                            'name':'Liturgy',
+                            'value':(
+                                f'Pauline Epistle: {links[4]}\n'                       +
+                                f'Catholic Epistle: {links[5]}\n'                      +
+                                f'Acts of the Apostles: {links[6]}\n'                  +
+                                f'Synaxarium:\n'                                       +
+                                '\n'.join([f'• {item}' for item in self.synaxarium]) +
+                                '\n'                                                   +
+                                f'Psalm: {links[7]}\n'                                 +
+                                f'Gospel: {links[8]}'
+                            ),
+                            'inline':False
+                        }
+                    ]
+        else:
+            # if there are no Vespers. This seems to only happen during the Nineveh fast.
+            final[0]['fields'] = [
+                        {
+                            'name':'Matins',
+                            'value':f'Psalm: {links[0]}\nGospel: {links[1]}'
+                        },
+                        {
+                            'name':'Liturgy',
+                            'value':(
+                                f'Pauline Epistle: {links[2]}\n'                       +
+                                f'Catholic Epistle: {links[3]}\n'                      +
+                                f'Acts of the Apostles: {links[4]}\n'                  +
+                                f'Synaxarium:\n'                                       +
+                                '\n'.join([f'• {item}' for item in self.synaxarium]) +
+                                '\n'                                                   +
+                                f'Psalm: {links[5]}\n'                                 +
+                                f'Gospel: {links[6]}'
+                            ),
+                            'inline':False
+                        }
+                    ]
+        return final
