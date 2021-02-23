@@ -2,7 +2,7 @@
     "title": "About Lector",
     "description": "A Discord bot for fetching and subscribing to various Christian lectionaries",
     "fields": {
-        "Developer": "[Fen Mammoth](https://github.com/fenuwu)",
+        "Developer": "[Arman Tarkhanian](https://github.com/armantark)",
         "Version": "Alpha",
         "License": "[MIT](https://github.com/fenuwu/lector-bot/blob/master/LICENSE)",
         "Repository": "[lector-bot](https://github.com/fenuwu/lector-bot)",
