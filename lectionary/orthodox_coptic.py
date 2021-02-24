@@ -59,6 +59,10 @@ class OrthodoxCopticLectionary:
             '2Jn ':'2 John ',
             '3Jn ':'3 John ',
 
+            '1John ':'1 John ',
+            '2John ':'2 John ',
+            '3John ':'3 John ',
+
             'Jn ':'John '
         }
 
@@ -103,8 +107,8 @@ class OrthodoxCopticLectionary:
 
         links = [bible_url.convert(reading) for reading in self.readings]
 
-        print(links)
-        print(len(links))
+        # print(links)
+        # print(len(links))
         final = [{
                     'title':self.title,
                     'description':self.subtitle,
