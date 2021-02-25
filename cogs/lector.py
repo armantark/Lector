@@ -56,7 +56,7 @@ class Lectionary(commands.Cog):
 
         # Initialize the database if it's not ready
         c    = conn.cursor()
-        c.execute('PRAGMA foreign_keys = ON')
+        
 
         # Guild settings table
         c.execute('''
@@ -167,7 +167,7 @@ class Lectionary(commands.Cog):
         guild_id = ctx.guild.id
 
         c    = conn.cursor()
-        c.execute('PRAGMA foreign_keys = ON')
+        
 
         c.execute('SELECT * FROM GuildSettings WHERE guild_id = ?', (guild_id,))
         setting = c.fetchone()
@@ -197,7 +197,7 @@ class Lectionary(commands.Cog):
             return
         
         c    = conn.cursor()
-        c.execute('PRAGMA foreign_keys = ON')
+        
 
         if channel: channel_id = channel.id
         else:       channel_id = ctx.channel.id
@@ -233,7 +233,7 @@ class Lectionary(commands.Cog):
     @commands.has_permissions(manage_messages=True)
     async def unsubscribe(self, ctx, channel:discord.TextChannel=None, lectionary:str=None):
         c    = conn.cursor()
-        c.execute('PRAGMA foreign_keys = ON')
+        
 
         if (channel is None) and (lectionary is None):
             # Remove all the guild's subscriptions
@@ -280,7 +280,7 @@ class Lectionary(commands.Cog):
         '''
 
         c    = conn.cursor()
-        c.execute('PRAGMA foreign_keys = ON')
+        
 
         c.execute('SELECT time FROM GuildSettings WHERE guild_id = ?', (ctx.guild.id,))
         time = c.fetchone()
@@ -370,7 +370,7 @@ class Lectionary(commands.Cog):
         also makes this wipe the subscriptions automatically.
         '''
         c    = conn.cursor()
-        c.execute('PRAGMA foreign_keys = ON')
+        
 
         c.execute('SELECT guild_id FROM GuildSettings')
         guild_ids = [item[0] for item in c.fetchall()]
@@ -392,7 +392,7 @@ class Lectionary(commands.Cog):
         await self._remove_deleted_guilds()
 
         c    = conn.cursor()
-        c.execute('PRAGMA foreign_keys = ON')
+        
 
         # Get all subscriptions for the guilds that have their time preference
         # set to the given hour
