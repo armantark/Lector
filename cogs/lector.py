@@ -169,13 +169,13 @@ class Lectionary(commands.Cog):
         c    = conn.cursor()
         
 
-        c.execute('SELECT * FROM GuildSettings WHERE guild_id = ?', (guild_id,))
+        c.execute('SELECT * FROM GuildSettings WHERE guild_id = %s', (guild_id,))
         setting = c.fetchone()
 
         if setting:
-            c.execute('UPDATE GuildSettings SET time = ? WHERE guild_id = ?', (time, guild_id))
+            c.execute('UPDATE GuildSettings SET time = %s WHERE guild_id = %s', (time, guild_id))
         else:
-            c.execute('INSERT INTO GuildSettings VALUES (?, ?)', (guild_id, time))
+            c.execute('INSERT INTO GuildSettings VALUES (%s, %s)', (guild_id, time))
         
         conn.commit()
 
@@ -205,24 +205,24 @@ class Lectionary(commands.Cog):
         guild_id = ctx.guild.id
 
         # Check to see if the guild has a settings entry yet
-        c.execute('SELECT * FROM GuildSettings WHERE guild_id = ?', (guild_id,))
+        c.execute('SELECT * FROM GuildSettings WHERE guild_id = %s', (guild_id,))
         row = c.fetchone()
         if not row:
             # If not, create a default entry for the guild
-            c.execute('INSERT INTO GuildSettings VALUES (?, ?)', (guild_id, self.EARLIEST_TIME))
+            c.execute('INSERT INTO GuildSettings VALUES (%s, %s)', (guild_id, self.EARLIEST_TIME))
 
         # Check if the given channel is already subscribed to the given lectionary
-        c.execute('SELECT * FROM Subscriptions WHERE channel_id=? AND sub_type=?', (channel_id, sub_type))
+        c.execute('SELECT * FROM Subscriptions WHERE channel_id=%s AND sub_type=%s', (channel_id, sub_type))
         row      = c.fetchone()
         sub_name = self.lectionary_names[sub_type].title()
         if row:
             await ctx.send(f'<#{channel_id}> is already subscribed to the {sub_name} lectionary.')
         else:
             # Check to make sure there aren't too many subscriptions already
-            if c.execute('SELECT COUNT(guild_id) FROM Subscriptions WHERE guild_id=?', (guild_id,)).fetchone()[0] >= self.MAX_SUBSCRIPTIONS:
+            if c.execute('SELECT COUNT(guild_id) FROM Subscriptions WHERE guild_id=%s', (guild_id,)).fetchone()[0] >= self.MAX_SUBSCRIPTIONS:
                 await ctx.send(f'You can\'t have more than {self.MAX_SUBSCRIPTIONS} subscriptions per guild.')
             else:
-                c.execute('INSERT INTO Subscriptions VALUES (?, ?, ?)', (guild_id, channel_id, sub_type))
+                c.execute('INSERT INTO Subscriptions VALUES (%s, %s, %s)', (guild_id, channel_id, sub_type))
                 conn.commit()
                 await ctx.send(f'<#{channel_id}> has been subscribed to the {sub_name} lectionary.')
 
@@ -237,14 +237,14 @@ class Lectionary(commands.Cog):
 
         if (channel is None) and (lectionary is None):
             # Remove all the guild's subscriptions
-            c.execute('DELETE FROM GuildSettings WHERE guild_id = ?', (ctx.guild.id,))
+            c.execute('DELETE FROM GuildSettings WHERE guild_id = %s', (ctx.guild.id,))
             conn.commit()
             await ctx.send(f'All subscriptions for {ctx.guild.name} have been removed.')
         
         elif isinstance(channel, discord.TextChannel) and (lectionary is None):
             # Remove all subscriptions for the given channel
             channel_id = channel.id
-            c.execute('DELETE FROM Subscriptions WHERE channel_id = ?', (channel_id,))
+            c.execute('DELETE FROM Subscriptions WHERE channel_id = %s', (channel_id,))
             conn.commit()
             await ctx.send(f'<#{channel_id}> has been unsubscribed from all lectionaries.')
         
@@ -253,7 +253,7 @@ class Lectionary(commands.Cog):
             channel_id = channel.id
             
             if lectionary is None:
-                c.execute('DELETE FROM Subscriptions WHERE channel_id = ?', (channel_id,))
+                c.execute('DELETE FROM Subscriptions WHERE channel_id = %s', (channel_id,))
                 conn.commit()
                 await ctx.send(f'<#{channel_id}> has been unsubscribed from all lectionaries.')
                 return
@@ -265,7 +265,7 @@ class Lectionary(commands.Cog):
                 await ctx.send('You didn\'t specify a valid lectionary option.')
                 return
 
-            c.execute('DELETE FROM Subscriptions WHERE channel_id = ? AND sub_type = ?', (channel_id, sub_type))
+            c.execute('DELETE FROM Subscriptions WHERE channel_id = %s AND sub_type = %s', (channel_id, sub_type))
             conn.commit()
             await ctx.send(f'<#{channel_id}> has been unsubscribed from the {self.lectionary_names[sub_type].title()} lectionary.')
         
@@ -282,19 +282,19 @@ class Lectionary(commands.Cog):
         c    = conn.cursor()
         
 
-        c.execute('SELECT time FROM GuildSettings WHERE guild_id = ?', (ctx.guild.id,))
+        c.execute('SELECT time FROM GuildSettings WHERE guild_id = %s', (ctx.guild.id,))
         time = c.fetchone()
         if time:
             # This check is here to prevent a "Nonetype cannot be subscripted" error
             time = time[0]
         else:
             time = self.EARLIEST_TIME
-            c.execute('INSERT INTO GuildSettings VALUES (?, ?)', (ctx.guild.id, time))
+            c.execute('INSERT INTO GuildSettings VALUES (%s, %s)', (ctx.guild.id, time))
 
         conn.commit()
 
         # Get all the subscription entries for the current guild
-        c.execute('SELECT * FROM Subscriptions WHERE guild_id = ?', (ctx.guild.id,))
+        c.execute('SELECT * FROM Subscriptions WHERE guild_id = %s', (ctx.guild.id,))
         subscriptions = c.fetchall()
         conn.commit()
 
@@ -380,7 +380,7 @@ class Lectionary(commands.Cog):
 
         for guild_id in guild_ids:
             if not self.bot.get_guild(guild_id):
-                c.execute('DELETE FROM GuildSettings WHERE guild_id = ?', (guild_id ,))
+                c.execute('DELETE FROM GuildSettings WHERE guild_id = %s', (guild_id ,))
                 count += 1
         
         conn.commit()
@@ -401,7 +401,7 @@ class Lectionary(commands.Cog):
             FROM Subscriptions
             INNER JOIN GuildSettings
             ON Subscriptions.guild_id = GuildSettings.guild_id
-            WHERE GuildSettings.time = ?
+            WHERE GuildSettings.time = %s
         ''', (hour,))
 
         feeds = [
@@ -420,7 +420,7 @@ class Lectionary(commands.Cog):
                 for item in feeds[sub_type]:
                     await channel.send(embed=discord.Embed.from_dict(item))
             else:
-                c.execute('DELETE FROM Subscriptions WHERE channel_id = ?', (channel_id,))
+                c.execute('DELETE FROM Subscriptions WHERE channel_id = %s', (channel_id,))
         
         conn.commit()
 
