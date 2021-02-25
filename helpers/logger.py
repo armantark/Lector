@@ -2,9 +2,9 @@ import requests
 import json
 
 def log(message):
-	log_webhook = os.environ['log_webhook']
+    log_webhook = os.environ['log_webhook']
 
-	if log_webhook != '':
+    if log_webhook != '':
         requests.post(log_webhook, json={
             "content":message
         })
