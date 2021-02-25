@@ -61,7 +61,7 @@ class Lectionary(commands.Cog):
         # Guild settings table
         c.execute('''
             CREATE TABLE IF NOT EXISTS GuildSettings (
-                guild_id INTEGER NOT NULL,
+                guild_id BIGINT NOT NULL,
                 time     INTEGER NOT NULL,
                 PRIMARY KEY (guild_id)
             )
@@ -70,9 +70,9 @@ class Lectionary(commands.Cog):
         # Subscriptions table
         c.execute('''
             CREATE TABLE IF NOT EXISTS Subscriptions (
-                guild_id   INTEGER NOT NULL,
-                channel_id INTEGER NOT NULL,
-                sub_type   INTEGER NOT NULL,
+                guild_id   BIGINT NOT NULL,
+                channel_id BIGINT NOT NULL,
+                sub_type   BIGINT NOT NULL,
                 FOREIGN KEY (guild_id) REFERENCES GuildSettings(guild_id) ON DELETE CASCADE
             )
         ''')
