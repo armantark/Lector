@@ -1,5 +1,6 @@
 import requests
 import json
+import os
 
 def log(message):
     log_webhook = os.environ['log_webhook']
