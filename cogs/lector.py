@@ -12,11 +12,14 @@ from helpers.logger import log
 import discord
 from discord.ext import commands, tasks
 
-import sqlite3
+import psycopg2
 import typing
 import re
 import datetime
 
+# global DB connection, yo
+# TODO: use a pool
+conn = psycopg.connect(os.environ['DATABASE_URL'])
 
 class Lectionary(commands.Cog):
     MAX_SUBSCRIPTIONS = 10
@@ -51,7 +54,6 @@ class Lectionary(commands.Cog):
         log('Initial data fetch')
 
         # Initialize the database if it's not ready
-        conn = sqlite3.connect('data.db')
         c    = conn.cursor()
         c.execute('PRAGMA foreign_keys = ON')
 
@@ -75,7 +77,6 @@ class Lectionary(commands.Cog):
         ''')
         
         conn.commit()
-        conn.close()
 
         # Start up the event loop
         self.last_fufill = datetime.datetime.utcnow().hour
@@ -164,7 +165,6 @@ class Lectionary(commands.Cog):
 
         guild_id = ctx.guild.id
 
-        conn = sqlite3.connect('data.db')
         c    = conn.cursor()
         c.execute('PRAGMA foreign_keys = ON')
 
@@ -177,7 +177,6 @@ class Lectionary(commands.Cog):
             c.execute('INSERT INTO GuildSettings VALUES (?, ?)', (guild_id, time))
         
         conn.commit()
-        conn.close()
 
         await ctx.send(f'The guild\'s subscriptions will come {time}:00 GMT daily.')
 
@@ -196,7 +195,6 @@ class Lectionary(commands.Cog):
             await ctx.send('You didn\'t specify a valid lectionary option.')
             return
         
-        conn = sqlite3.connect('data.db')
         c    = conn.cursor()
         c.execute('PRAGMA foreign_keys = ON')
 
@@ -227,13 +225,12 @@ class Lectionary(commands.Cog):
                 conn.commit()
                 await ctx.send(f'<#{channel_id}> has been subscribed to the {sub_name} lectionary.')
 
-        conn.close()
+        conn.commit()
 
 
     @commands.command(aliases=['unsub'])
     @commands.has_permissions(manage_messages=True)
     async def unsubscribe(self, ctx, channel:discord.TextChannel=None, lectionary:str=None):
-        conn = sqlite3.connect('data.db')
         c    = conn.cursor()
         c.execute('PRAGMA foreign_keys = ON')
 
@@ -257,14 +254,13 @@ class Lectionary(commands.Cog):
             if lectionary is None:
                 c.execute('DELETE FROM Subscriptions WHERE channel_id = ?', (channel_id,))
                 conn.commit()
-                conn.close()
                 await ctx.send(f'<#{channel_id}> has been unsubscribed from all lectionaries.')
                 return
 
             sub_type = self._index_lectionary_name(lectionary)
 
             if sub_type == -1:
-                conn.close()
+                conn.rollback()
                 await ctx.send('You didn\'t specify a valid lectionary option.')
                 return
 
@@ -274,8 +270,6 @@ class Lectionary(commands.Cog):
         
         else:
             await ctx.send('You didn\'t specify a valid unsubscription option.')
-
-        conn.close()
     
 
     def _build_subcriptions_list(self, ctx):
@@ -284,7 +278,6 @@ class Lectionary(commands.Cog):
         guild given the guild id.
         '''
 
-        conn = sqlite3.connect('data.db')
         c    = conn.cursor()
         c.execute('PRAGMA foreign_keys = ON')
 
@@ -302,7 +295,7 @@ class Lectionary(commands.Cog):
         # Get all the subscription entries for the current guild
         c.execute('SELECT * FROM Subscriptions WHERE guild_id = ?', (ctx.guild.id,))
         subscriptions = c.fetchall()
-        conn.close()
+        conn.commit()
 
         embed = discord.Embed(title=f'Subscriptions for {ctx.guild.name}')
         if subscriptions:
@@ -375,7 +368,6 @@ class Lectionary(commands.Cog):
         the database. The ON CASCADE DELETE option in the database
         also makes this wipe the subscriptions automatically.
         '''
-        conn = sqlite3.connect('data.db')
         c    = conn.cursor()
         c.execute('PRAGMA foreign_keys = ON')
 
@@ -391,7 +383,6 @@ class Lectionary(commands.Cog):
                 count += 1
         
         conn.commit()
-        conn.close()
 
         if (count > 0): log(f'Purged {count} out of {total} guilds')
     
@@ -399,7 +390,6 @@ class Lectionary(commands.Cog):
     async def push_subscriptions(self, hour):
         await self._remove_deleted_guilds()
 
-        conn = sqlite3.connect('data.db')
         c    = conn.cursor()
         c.execute('PRAGMA foreign_keys = ON')
 
@@ -432,7 +422,6 @@ class Lectionary(commands.Cog):
                 c.execute('DELETE FROM Subscriptions WHERE channel_id = ?', (channel_id,))
         
         conn.commit()
-        conn.close()
 
         if (len(subscriptions) > 0):
             log(f'Pushed {len(subscriptions)} subscription(s) for {hour}:00 GMT')
