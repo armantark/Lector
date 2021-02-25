@@ -62,7 +62,7 @@ class Lectionary(commands.Cog):
         c.execute('''
             CREATE TABLE IF NOT EXISTS GuildSettings (
                 guild_id BIGINT NOT NULL,
-                time     INTEGER NOT NULL,
+                time     BIGINT NOT NULL,
                 PRIMARY KEY (guild_id)
             )
         ''')
