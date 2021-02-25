@@ -219,7 +219,8 @@ class Lectionary(commands.Cog):
             await ctx.send(f'<#{channel_id}> is already subscribed to the {sub_name} lectionary.')
         else:
             # Check to make sure there aren't too many subscriptions already
-            if c.execute('SELECT COUNT(guild_id) FROM Subscriptions WHERE guild_id=%s', (guild_id,)).fetchone()[0] >= self.MAX_SUBSCRIPTIONS:
+            c.execute('SELECT COUNT(guild_id) FROM Subscriptions WHERE guild_id=%s', (guild_id,))
+            if c.fetchone()[0] >= self.MAX_SUBSCRIPTIONS:
                 await ctx.send(f'You can\'t have more than {self.MAX_SUBSCRIPTIONS} subscriptions per guild.')
             else:
                 c.execute('INSERT INTO Subscriptions VALUES (%s, %s, %s)', (guild_id, channel_id, sub_type))
