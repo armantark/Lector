@@ -16,10 +16,11 @@ import psycopg2
 import typing
 import re
 import datetime
+import os
 
 # global DB connection, yo
 # TODO: use a pool
-conn = psycopg.connect(os.environ['DATABASE_URL'])
+conn = psycopg2.connect(os.environ['DATABASE_URL'])
 
 class Lectionary(commands.Cog):
     MAX_SUBSCRIPTIONS = 10
