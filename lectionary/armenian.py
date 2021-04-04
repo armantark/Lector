@@ -68,8 +68,8 @@ class ArmenianLectionary:
 
         for reading in readings_raw_select:
             curr = reading.text
-            if not curr[-1].isdigit():
-                curr = '\n' + curr
+            if curr[-1].isdigit():
+                curr = curr + '\n'
                 print(curr)
             readings += curr
 
