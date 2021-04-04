@@ -70,7 +70,6 @@ class ArmenianLectionary:
             curr = reading.text
             if curr[-1].isdigit():
                 curr = curr + '\n'
-                print(curr)
             readings += curr
 
         substitutions = {'III ':'3 ','II ':'2 ','I ':'1 ','Azariah':'Prayer of Azariah'}
