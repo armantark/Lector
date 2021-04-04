@@ -63,14 +63,14 @@ class ArmenianLectionary:
 
         self.title    = soup.select('h2')[1].text
         self.subtitle = date_expand.auto_expand(self.today, self.title)
-        readings = []
+        readings = ""
 
         readings_raw_select = soup.select('h4[style]')
 
         for reading in readings_raw_select:
             readings += reading.text
 
-        print(self.title)
+        print(readings)
 
         substitutions = {'III ':'3 ','II ':'2 ','I ':'1 ','Azariah':'Prayer of Azariah'}
         for original in substitutions.keys():
