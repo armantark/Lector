@@ -10,6 +10,8 @@ def convert(reference):
     # Even when you're using a translation that includes it, the term
     # "Psalm 151" throws a "No Results Found" Error unless you write it
     # with a pseudo-chapter number: "Psalm 151 1".
+    if reference == "":
+        return reference
     if not reference[-1:].isdigit():
         return '*' + reference + '*'
     replacements = {
