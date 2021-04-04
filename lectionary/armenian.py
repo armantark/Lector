@@ -65,7 +65,7 @@ class ArmenianLectionary:
         self.subtitle = date_expand.auto_expand(self.today, self.title)
         readings = []
 
-        readings_raw_select = soup.select('h4[style]')
+        readings = soup.select_one('h4[style]').text
 
         for reading in readings_raw_select:
             readings += reading.text
