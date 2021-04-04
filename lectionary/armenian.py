@@ -69,9 +69,8 @@ class ArmenianLectionary:
         for reading in readings_raw_select:
             curr = reading.text
             print(curr)
-            if not curr[-1].isdigit():
-                lastdigit = max([int(s) for s in curr.split() if s.isdigit()])
-                curr = curr[:lastdigit] + '\n' + s[lastdigit:]
+            if curr[-1].isdigit():
+                curr += '\n'
             readings += reading.text
 
         substitutions = {'III ':'3 ','II ':'2 ','I ':'1 ','Azariah':'Prayer of Azariah'}
