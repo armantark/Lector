@@ -8,7 +8,6 @@ from bs4 import BeautifulSoup
 import requests
 import datetime
 
-
 class ArmenianLectionary:
     def __init__(self): self.regenerate()
     
@@ -68,9 +67,11 @@ class ArmenianLectionary:
         readings_raw_select = soup.select('h4[style]')
 
         for reading in readings_raw_select:
+            curr = reading.text
+            if not curr[-1].isdigit():
+                lastdigit = max([int(s) for s in curr.split() if s.isdigit()])
+                curr = curr[:lastdigit] + '\n' + s[lastdigit:]
             readings += reading.text
-
-        print(readings)
 
         substitutions = {'III ':'3 ','II ':'2 ','I ':'1 ','Azariah':'Prayer of Azariah'}
         for original in substitutions.keys():
