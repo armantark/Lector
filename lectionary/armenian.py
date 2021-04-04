@@ -67,8 +67,8 @@ class ArmenianLectionary:
 
         readings = soup.select_one('h4[style]').text
 
-        for reading in readings_raw_select:
-            readings += reading.text
+        # for reading in readings_raw_select:
+        #     readings += reading.text
 
         print(readings)
 
