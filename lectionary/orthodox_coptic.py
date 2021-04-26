@@ -44,6 +44,8 @@ class OrthodoxCopticLectionary:
 
             '1Cor ':'1 Corinthians ',
             '2Cor ':'2 Corinthians ',
+            '1Corinthians ':'1 Corinthians ',
+            '2Corinthians ':'2 Corinthians ',
 
             'Col ':'Colossians ',
 
