@@ -109,6 +109,8 @@ class OrthodoxCopticLectionary:
 
         links = [bible_url.convert(reading) for reading in self.readings]
 
+        default = {'See website for more info': self.url}
+
         # print(links)
         # print(len(links))
         final = [{
@@ -120,7 +122,7 @@ class OrthodoxCopticLectionary:
                         'name':'Coptic Orthodox Lectionary',
                         'url':self.url
                     },
-                    'fields':[{'name':'','value':f'{'See website for more info': self.url}'}]
+                    'fields':[{'name':'','value':f'{default}'}]
                 }]
         if len(links) == 0:
             return final
