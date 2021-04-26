@@ -122,7 +122,7 @@ class OrthodoxCopticLectionary:
                         'name':'Coptic Orthodox Lectionary',
                         'url':self.url
                     },
-                    'fields':[{'name':'','value':f'{default}'}]
+                    'fields':[{'name':'See website for more information','value':f'{default}'}]
                 }]
         if len(links) == 0:
             return final
