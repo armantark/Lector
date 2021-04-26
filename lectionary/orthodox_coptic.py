@@ -120,9 +120,11 @@ class OrthodoxCopticLectionary:
                         'name':'Coptic Orthodox Lectionary',
                         'url':self.url
                     },
-                    'fields':[]
+                    'fields':[{'name':'','value':f'{'See website for more info': self.url}'}]
                 }]
-        if len(links) > 7:
+        if len(links) == 0:
+            return final
+        elif len(links) > 7:
             # if there are Vespers
             final[0]['fields'] = [
                         {
