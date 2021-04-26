@@ -109,7 +109,7 @@ class OrthodoxCopticLectionary:
 
         links = [bible_url.convert(reading) for reading in self.readings]
 
-        default = {'See website for more info': self.url}
+        default = self.url
 
         # print(links)
         # print(len(links))
