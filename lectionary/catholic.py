@@ -250,6 +250,7 @@ class CatholicLectionary:
         '''
         self.today = datetime.date.today()
         permalink = self.today.strftime('https://bible.usccb.org/bible/readings/%m%d%y.cfm')
+        self.pages = []
 
         try:
             r = requests.get(permalink)
