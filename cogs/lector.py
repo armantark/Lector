@@ -128,8 +128,8 @@ class Lectionary(commands.Cog):
             if not self.lectionaries[index].ready:
                 self.lectionaries[index].regenerate()
                 if not self.lectionaries[index].ready:
-                    await ctx.message.add_reaction('❌')
                     log('Lectionary not regenerated correctly.')
+                    await ctx.message.add_reaction('❌')
                     return
             
             for piece in self.lectionaries[index].build_json():
