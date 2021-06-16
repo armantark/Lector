@@ -129,6 +129,7 @@ class Lectionary(commands.Cog):
                 self.lectionaries[index].regenerate()
                 if not self.lectionaries[index].ready:
                     await ctx.message.add_reaction('❌')
+                    log('Lectionary not regenerated correctly.')
                     return
             
             for piece in self.lectionaries[index].build_json():
@@ -171,7 +172,7 @@ class Lectionary(commands.Cog):
 
         c.execute('SELECT * FROM GuildSettings WHERE guild_id = %s', (guild_id,))
         setting = c.fetchone()
-
+Log
         if setting:
             c.execute('UPDATE GuildSettings SET time = %s WHERE guild_id = %s', (time, guild_id))
         else:
@@ -340,6 +341,7 @@ class Lectionary(commands.Cog):
             await self.push_subscriptions(current_hour)
         else:
             await ctx.message.add_reaction('❌')
+            log('Push failed.')
 
 
     '''SUBSCRIPTIONS TASK LOOP'''
