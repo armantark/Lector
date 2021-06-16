@@ -53,9 +53,11 @@ class ArmenianLectionary:
             r = requests.get(self.url)
             if r.status_code != 200:
                 self.clear()
+                print('Failed to get URL for vemkar.us')
                 return
         except:
             self.clear()
+            print('Request failed.')
             return
         
         soup = BeautifulSoup(r.text, 'html.parser')
@@ -82,14 +84,14 @@ class ArmenianLectionary:
             self.readings = readings.split('\n')
 
         # Get pages with additional lectionary notes, if they exist
-        try:
-            r = requests.get(self.today.strftime(f'https://vemkar.us/%B-{self.today.day}-%Y'))
-            if r.status_code != 200:
-                self.clear()
-                return
-        except:
-            self.clear()
-            return
+        # try:
+        #     r = requests.get(self.today.strftime(f'https://vemkar.us/%B-{self.today.day}-%Y'))
+        #     if r.status_code != 200:
+        #         self.clear()
+        #         return
+        # except:
+        #     self.clear()
+        #     return
         
         # If there was no redirect, this is a unique resource
         if (len(r.history) == 0):
