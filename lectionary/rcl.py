@@ -88,12 +88,12 @@ class RevisedCommonLectionary:
             # Listings with semi-continuous & complementary 
             match = re.search(r'<strong>(.*)<\/strong>: <br\/>Semi-continuous: <a.*>(.*)<\/a><br\/>Complementary: <a.*>(.*)<\/a>', line)
             if match:
-                self.sections['Semi-continuous'] = ''.join([
+                self.sections['Semi-continuous'] = '\n'.join([
                     f'<a>{reading}</a>'
                     for reading in self._explode_reference_list(match.group(2))
                 ])
             
-                self.sections['Complementary'] = ''.join([
+                self.sections['Complementary'] = '\n'.join([
                     f'<a>{reading}</a>'
                     for reading in self._explode_reference_list(match.group(3))
                 ])
@@ -135,12 +135,9 @@ class RevisedCommonLectionary:
         links = readings.replace(' and ',';').replace(' or ',';').replace('\xa0\xa0•\xa0', ';').split(';')
 
         for link in links:
-            if link != links[-1]:
-                readings = readings.replace(link, f'<a>{link}</a>\n')
-            else:
-                readings = readings.replace(link, f'<a>{link}</a>')
+            readings = readings.replace(link, f'<a>{link}</a>')
         
-        # readings = readings.replace('\xa0\xa0•\xa0', '\n')
+        readings = readings.replace('\xa0\xa0•\xa0', '\n')
 
         return readings
     
