@@ -135,9 +135,12 @@ class RevisedCommonLectionary:
         links = readings.replace(' and ',';').replace(' or ',';').replace('\xa0\xa0•\xa0', ';').split(';')
 
         for link in links:
-            readings = readings.replace(link, f'<a>{link}</a>')
+            if link != links[-1]:
+                readings = readings.replace(link, f'<a>{link}</a>\n')
+            else:
+                readings = readings.replace(link, f'<a>{link}</a>')
         
-        readings = readings.replace('\xa0\xa0•\xa0', '\n')
+        # readings = readings.replace('\xa0\xa0•\xa0', '\n')
 
         return readings
     
