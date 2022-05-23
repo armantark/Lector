@@ -64,6 +64,7 @@ class OrthodoxRussianLectionary:
 
         # Readings
         readings = soup.select_one('span[class="normaltext"]:nth-child(5)')
+        print("test")
         if readings is not NoneType:
             readings = [str(item) for item in readings.contents]
         else:
