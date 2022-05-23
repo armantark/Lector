@@ -13,7 +13,11 @@ bot.remove_command('help')
 for file in os.listdir('cogs'):
     if file.endswith('.py'):
         name = file[:-3]
-        bot.load_extension(f'cogs.{name}')
+        try:
+            bot.load_extension(f'cogs.{name}')
+        except:
+            print(name)
+
 
 @bot.event
 async def on_ready():

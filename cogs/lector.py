@@ -128,7 +128,7 @@ class Lectionary(commands.Cog):
             if not self.lectionaries[index].ready:
                 self.lectionaries[index].regenerate()
                 if not self.lectionaries[index].ready:
-                    log('Lectionary not regenerated correctly.')
+                    print('Lectionary not regenerated correctly.')
                     await ctx.message.add_reaction('❌')
                     return
             
