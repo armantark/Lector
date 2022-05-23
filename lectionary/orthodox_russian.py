@@ -65,10 +65,7 @@ class OrthodoxRussianLectionary:
         # Readings
         readings = soup.select_one('span[class="normaltext"]:nth-child(5)')
         print("test")
-        if readings is not NoneType:
-            readings = [str(item) for item in readings.contents]
-        else:
-            readings = [""]
+        readings = [str(item) for item in readings.contents]
         readings = ''.join(readings)
         readings = readings.replace('\n','').replace('<br/>', '\n')
         if readings[-1] == '\n': readings = readings[:-1]
