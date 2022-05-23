@@ -64,7 +64,10 @@ class OrthodoxRussianLectionary:
 
         # Readings
         readings = soup.select_one('span[class="normaltext"]:nth-child(5)')
-        readings = [str(item) for item in readings.contents]
+        try:
+            readings = [str(item) for item in readings.contents]
+        except:
+            return
         readings = ''.join(readings)
         readings = readings.replace('\n','').replace('<br/>', '\n')
         if readings[-1] == '\n': readings = readings[:-1]
