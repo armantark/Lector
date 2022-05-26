@@ -24,7 +24,9 @@ def convert(reference):
         'St. Paul\'s Second Letter to ':'2 ',
         'St. James\' Universal Letter': 'James',
         'St. Peter\'s First Universal Letter':'1 Peter',
-        'St. Peter\'s Second Universal Letter':'2 Peter'
+        'St. Peter\'s Second Universal Letter':'2 Peter',
+        '1Thess':'1 Thessalonians',
+        '2Thess':'2 Thessalonians'
     }
 
     for item in replacements:
