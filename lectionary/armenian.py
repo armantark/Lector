@@ -47,7 +47,7 @@ class ArmenianLectionary:
 
     def regenerate(self):
         self.today = datetime.date.today()
-        self.url   = self.today.strftime(f'https://armenianscripture.wordpress.com/%Y/11/11/%m-{self.today.day}-%Y')
+        self.url   = self.today.strftime(f'https://armenianscripture.wordpress.com/%Y/%m/%d/%B-{self.today.day}-%Y/https://vemkar.us/lectionary/%B-{self.today.day}-%Y')
         
         try:
             r = requests.get(self.url)
