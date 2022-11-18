@@ -7,7 +7,8 @@ import discord
 import os
 
 config = bot_config.Config()
-bot = commands.Bot(command_prefix=config.prefix)
+intents = discord.Intents.all()
+bot = commands.Bot(command_prefix=config.prefix, intents=intents)
 bot.remove_command('help')
 
 for file in os.listdir('cogs'):
