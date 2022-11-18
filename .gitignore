@@ -1,0 +1,10 @@
+# Python components
+__pycache__
+venv
+
+# Private data 
+config.json
+data.db
+
+# Testing modules
+tester.py
