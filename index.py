@@ -15,7 +15,7 @@ for file in os.listdir('cogs'):
     if file.endswith('.py'):
         name = file[:-3]
         try:
-            await bot.load_extension(f'cogs.{name}')
+            bot.load_extension(f'cogs.{name}')
         except:
             print(name)
 
