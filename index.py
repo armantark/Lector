@@ -31,4 +31,4 @@ async def on_ready():
     print('Ready.')
     logger.log(f'Logged in as "{bot.user}"')
 
-bot.run(config.token)
+# bot.run(config.token)
