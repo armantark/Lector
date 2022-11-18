@@ -101,7 +101,7 @@ class ArmenianLectionary:
         else:
             self.notes_url = ''
 
-        self.synaxarium = self.get_synaxarium()
+        # self.synaxarium = self.get_synaxarium()
 
         self.ready = True
 
