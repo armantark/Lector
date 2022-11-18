@@ -430,5 +430,5 @@ class Lectionary(commands.Cog):
             log(f'Pushed {len(subscriptions)} subscription(s) for {hour}:00 GMT')
     
 
-def setup(bot):
-    bot.add_cog(Lectionary(bot))
+async def setup(bot):
+    await bot.add_cog(Lectionary(bot))

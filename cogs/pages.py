@@ -65,5 +65,5 @@ class Pages(commands.Cog):
         await ctx.send(embed=Embed.from_dict(data))
         
 
-def setup(bot):
-    bot.add_cog(Pages(bot))
+async def setup(bot):
+    await bot.add_cog(Pages(bot))
