@@ -4,6 +4,8 @@ from helpers import logger
 from discord.ext import commands
 import discord
 
+import asyncio
+
 import os
 
 config = bot_config.Config()
@@ -11,14 +13,16 @@ intents = discord.Intents.all()
 bot = commands.Bot(command_prefix=config.prefix, intents=intents)
 bot.remove_command('help')
 
-for file in os.listdir('cogs'):
-    if file.endswith('.py'):
-        name = file[:-3]
-        try:
-            bot.load_extension(f'cogs.{name}')
-        except:
-            print(name)
-
+async def main():
+    for file in os.listdir('cogs'):
+        if file.endswith('.py'):
+            name = file[:-3]
+            try:
+                await bot.load_extension(f'cogs.{name}')
+                await bot.start(config.token)
+            except:
+                print(name)
+asyncio.run(main())
 
 @bot.event
 async def on_ready():
