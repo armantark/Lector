@@ -23,12 +23,13 @@ async def main():
                     await bot.start(config.token)
             except:
                 print(name)
-asyncio.run(main())
 
 @bot.event
 async def on_ready():
     await bot.change_presence(activity=discord.Game(name=f"{config.prefix}help"))
     print('Ready.')
     logger.log(f'Logged in as "{bot.user}"')
+
+asyncio.run(main())
 
 # bot.run(config.token)
