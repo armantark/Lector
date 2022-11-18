@@ -18,8 +18,9 @@ async def main():
         if file.endswith('.py'):
             name = file[:-3]
             try:
-                await bot.load_extension(f'cogs.{name}')
-                await bot.start(config.token)
+                async with bot:
+                    await bot.load_extension(f'cogs.{name}')
+                    await bot.start(config.token)
             except:
                 print(name)
 asyncio.run(main())
