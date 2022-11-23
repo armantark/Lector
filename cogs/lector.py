@@ -117,7 +117,7 @@ class Lectionary(commands.Cog):
 
     @commands.command(aliases=['l'])
     async def lectionary(self, ctx, *lec):
-        print("hello")
+        # print("hello")
         
         if lec == None:
             await ctx.send('You didn\'t specify a lectionary.')
@@ -127,7 +127,7 @@ class Lectionary(commands.Cog):
         index = self._index_lectionary_name(lec)
 
         if (index > -1):
-            print(lec)
+            # print(lec)
             if not self.lectionaries[index].ready:
                 self.lectionaries[index].regenerate()
                 if not self.lectionaries[index].ready:
