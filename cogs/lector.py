@@ -117,8 +117,8 @@ class Lectionary(commands.Cog):
 
     @commands.command(aliases=['l'])
     async def lectionary(self, ctx, *lec):
-        # print("hello")
-        # print(lec)
+        print("hello")
+        print(lec)
         if lec == None:
             await ctx.send('You didn\'t specify a lectionary.')
             return
