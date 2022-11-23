@@ -49,7 +49,7 @@ class ArmenianLectionary:
         self.today = datetime.date.today()
         # self.url   = self.today.strftime(f'https://armenianscripture.wordpress.com/%Y/%m/%d/%B-{self.today.day}-%Y')
         self.url   = self.today.strftime(f'https://vemkar.us/lectionary/October-18-2022')
-        print(self.url)
+        # print(self.url)
         try:
             r = requests.get(self.url)
             if r.status_code != 200:
