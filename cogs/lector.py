@@ -123,12 +123,11 @@ class Lectionary(commands.Cog):
             await ctx.send('You didn\'t specify a lectionary.')
             return
 
-        print(lec)
-
         lec = ' '.join(lec).lower()
         index = self._index_lectionary_name(lec)
 
         if (index > -1):
+            print(lec)
             if not self.lectionaries[index].ready:
                 self.lectionaries[index].regenerate()
                 if not self.lectionaries[index].ready:
