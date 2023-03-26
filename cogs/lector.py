@@ -11,6 +11,7 @@ from helpers.logger import log
 
 import discord
 from discord.ext import commands, tasks
+from discord import app_commands
 
 import psycopg2
 import typing
