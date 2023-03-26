@@ -2,6 +2,7 @@ from helpers import bot_config
 from helpers import logger
 
 from discord.ext import commands
+from discord import app_commands
 import discord
 
 import asyncio
@@ -9,7 +10,9 @@ import asyncio
 import os
 
 config = bot_config.Config()
-intents = discord.Intents.all()
+intents = discord.Intents.default()
+client = discord.Client(intents=intents)
+tree = app_commands.CommandTree(client)
 bot = commands.Bot(command_prefix=config.prefix, intents=intents)
 bot.remove_command('help')
 
