@@ -1,9 +1,7 @@
+import json
+
 from discord import Embed
 from discord.ext import commands
-from discord import app_commands
-
-import json
-import datetime
 
 
 class Pages(commands.Cog):
@@ -15,12 +13,12 @@ class Pages(commands.Cog):
             data = json.load(f)
 
         self.about_json = {
-            'title':data['title'],
-            'description':data['description'],
-            'fields':[
+            'title': data['title'],
+            'description': data['description'],
+            'fields': [
                 {
-                    'name':name,
-                    'value':value
+                    'name': name,
+                    'value': value
                 }
                 for name, value in data['fields'].items()
             ]
@@ -31,18 +29,18 @@ class Pages(commands.Cog):
         with open('cogs/pages_data/commands.json', encoding='utf-8') as f:
             data = json.load(f)
 
-        self.command_help      = data['commands']
+        self.command_help = data['commands']
         self.command_redirects = data['redirects']
 
         self.help_json = {
-            'title':data['title'],
-            'description':data['description'].replace('<pre>', self.prefix) + '\n\n```\n' + '\n'.join(self.command_help) + '```'
+            'title': data['title'],
+            'description': data['description'].replace('<pre>', self.prefix) + '\n\n```\n' + '\n'.join(
+                self.command_help) + '```'
         }
 
     @commands.command()
     async def about(self, ctx):
         await ctx.send(embed=Embed.from_dict(self.about_json))
-
 
     @commands.command(aliases=['h'])
     async def help(self, ctx, arg=None):
@@ -50,8 +48,8 @@ class Pages(commands.Cog):
             # Given a command that is known to be in the command documentation,
             # generate an embed for it.
             return {
-                'title':arg,
-                'description':self.command_help[arg].replace('<base>', f'{self.prefix}{arg}')
+                'title': arg,
+                'description': self.command_help[arg].replace('<base>', f'{self.prefix}{arg}')
             }
 
         if arg is None:
@@ -61,10 +59,10 @@ class Pages(commands.Cog):
         elif (arg in self.command_redirects) and (self.command_redirects[arg] in self.command_help):
             data = build_command_json(self.command_redirects[arg])
         else:
-            data = {'color':16711680,'description':'That command does not exist.'}
-        
+            data = {'color': 16711680, 'description': 'That command does not exist.'}
+
         await ctx.send(embed=Embed.from_dict(data))
-        
+
 
 async def setup(bot):
     await bot.add_cog(Pages(bot))

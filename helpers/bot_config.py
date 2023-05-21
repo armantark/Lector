@@ -1,28 +1,12 @@
-import json
-import sys
 import os
+
+from dotenv import load_dotenv
+
+load_dotenv()  # take environment variables from .env.
 
 
 class Config:
-    filename = 'config.json'
-    
-    prefix = os.environ['prefix']
-    token = os.environ['token']
-
-    # try:
-    #     with open(filename, 'r') as f:
-    #         data = json.load(f)
-        
-    #     del data
-
-    # except FileNotFoundError:
-    #     print(f'\'{filename}\' does not exist.')
-    #     sys.exit()
-
-    # except json.decoder.JSONDecodeError:
-    #     print(f'\'{filename}\' is malformed.')
-    #     sys.exit()
-
-    # except KeyError:
-    #     print(f'\'{filename}\' is missing information.')
-    #     sys.exit()
+    def __init__(self):
+        self.prefix = os.getenv('prefix')
+        self.token = os.getenv('token')
+        self.log_webhook = os.getenv('log_webhook')
