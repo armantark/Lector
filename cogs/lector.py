@@ -1,12 +1,11 @@
 import datetime
-import os
 import re
 import typing
 
 import discord
-import psycopg2
 from discord.ext import commands, tasks
 
+from helpers.bot_database import db
 from helpers.logger import log
 from lectionary.armenian import ArmenianLectionary
 from lectionary.bcp import BookOfCommonPrayer
@@ -17,10 +16,6 @@ from lectionary.orthodox_greek import OrthodoxGreekLectionary
 from lectionary.orthodox_russian import OrthodoxRussianLectionary
 from lectionary.rcl import RevisedCommonLectionary
 
-# global DB connection, yo
-# TODO: use a pool
-conn = psycopg2.connect(os.environ['DATABASE_URL'])
-
 
 class Lectionary(commands.Cog):
     MAX_SUBSCRIPTIONS = 10
@@ -28,8 +23,57 @@ class Lectionary(commands.Cog):
     LATEST_TIME = 23
 
     def __init__(self, bot):
+        self.last_fulfill = None
+        self.lectionaries = None
+        self.lectionary_names = None
         self.bot = bot
 
+        self._init_lectionaries()
+
+        self._init_sql_commands()
+
+        self._start_event_loop()
+
+        log(f'Bot booted. Will not fulfill subscriptions for {self.last_fulfill}:00 GMT or prior.')
+
+    def _start_event_loop(self):
+        # Start up the event loop
+        self.last_fulfill = datetime.datetime.utcnow().hour
+        self.fulfill_subscriptions.start()
+
+    @staticmethod
+    def _init_sql_commands():
+        log('Initial data fetch')
+        # Initialize the database if it's not ready
+        conn = db.get_conn()
+        c = conn.cursor()
+        try:
+            # Guild settings table
+            c.execute('''
+                CREATE TABLE IF NOT EXISTS GuildSettings (
+                    guild_id BIGINT NOT NULL,
+                    time     BIGINT NOT NULL,
+                    PRIMARY KEY (guild_id)
+                )
+            ''')
+            # Subscriptions table
+            c.execute('''
+                CREATE TABLE IF NOT EXISTS Subscriptions (
+                    guild_id   BIGINT NOT NULL,
+                    channel_id BIGINT NOT NULL,
+                    sub_type   BIGINT NOT NULL,
+                    FOREIGN KEY (guild_id) REFERENCES GuildSettings(guild_id) ON DELETE CASCADE
+                )
+            ''')
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            raise e
+
+        finally:
+            db.put_conn(conn)
+
+    def _init_lectionaries(self):
         # This list is for indexing-display purposes
         self.lectionary_names = [
             'armenian',
@@ -40,7 +84,6 @@ class Lectionary(commands.Cog):
             'greek orthodox',
             'russian orthodox',
             'revised common']
-
         # Lectionary Objects
         self.lectionaries = [
             ArmenianLectionary(),
@@ -52,48 +95,17 @@ class Lectionary(commands.Cog):
             OrthodoxRussianLectionary(),
             RevisedCommonLectionary()]
 
-        log('Initial data fetch')
-
-        # Initialize the database if it's not ready
-        c = conn.cursor()
-
-        # Guild settings table
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS GuildSettings (
-                guild_id BIGINT NOT NULL,
-                time     BIGINT NOT NULL,
-                PRIMARY KEY (guild_id)
-            )
-        ''')
-
-        # Subscriptions table
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS Subscriptions (
-                guild_id   BIGINT NOT NULL,
-                channel_id BIGINT NOT NULL,
-                sub_type   BIGINT NOT NULL,
-                FOREIGN KEY (guild_id) REFERENCES GuildSettings(guild_id) ON DELETE CASCADE
-            )
-        ''')
-
-        conn.commit()
-
-        # Start up the event loop
-        self.last_fulfill = datetime.datetime.utcnow().hour
-        self.fufill_subscriptions.start()
-
-        log(f'Bot booted. Will not fulfill subscriptions for {self.last_fulfill}:00 GMT or prior.')
-
     def regenerate_all(self):
         for index in range(len(self.lectionaries)):
             self.lectionaries[index].regenerate()
         log('Refetched lectionary data')
 
-    def _index_lectionary_name(self, lectionary):
-        '''
+    @staticmethod
+    def _index_lectionary_name(lectionary):
+        """
         Given a lectionary name (str), returns its index number (int).
         If the name is invalid, -1 is returned.
-        '''
+        """
 
         indexes = {
             'armenian': 0, 'a': 0,
@@ -115,41 +127,70 @@ class Lectionary(commands.Cog):
 
     @commands.command(aliases=['l'])
     async def lectionary(self, ctx, *lec):
-        # print("hello")
-
+        lec = self._validate_lectionary_input(lec)
         if lec is None:
             await ctx.send('You didn\'t specify a lectionary.')
             return
 
-        lec = ' '.join(lec).lower()
         index = self._index_lectionary_name(lec)
 
         if index > -1:
-            # print(lec)
-            if not self.lectionaries[index].ready:
-                self.lectionaries[index].regenerate()
-                if not self.lectionaries[index].ready:
-                    print('Lectionary not regenerated correctly.')
-                    await ctx.message.add_reaction('❌')
-                    return
+            lectionary = self._get_or_regenerate_lectionary(index)
+            if lectionary is None:
+                await ctx.message.add_reaction('❌')
+                return
 
-            for piece in self.lectionaries[index].build_json():
-                await ctx.send(embed=discord.Embed.from_dict(piece))
+            await self.send_lectionary(ctx, lectionary)
         else:
             await ctx.send('You didn\'t specify a valid lectionary.')
+
+    @staticmethod
+    def _validate_lectionary_input(lec):
+        if lec is None:
+            return None
+        return ' '.join(lec).lower()
+
+    def _get_or_regenerate_lectionary(self, index):
+        if not self.lectionaries[index].ready:
+            self.lectionaries[index].regenerate()
+            if not self.lectionaries[index].ready:
+                print('Lectionary not regenerated correctly.')
+                return None
+        return self.lectionaries[index]
+
+    @staticmethod
+    async def send_lectionary(ctx, lectionary):
+        for piece in lectionary.build_json():
+            await ctx.send(embed=discord.Embed.from_dict(piece))
 
     '''SUBSCRIPTION COMMANDS'''
 
     @commands.command()
     @commands.has_permissions(manage_messages=True)
     async def time(self, ctx, *, time=''):
-        if (time == ''):
-            now = datetime.datetime.utcnow()
-            output = now.strftime(f'It is currently: %A, %B {now.day}, %Y, %I:%M:%S %p (GMT).')
-            await ctx.send(output)
-            return
+        if time == '':
+            await self._send_current_time(ctx)
+        else:
+            await self._update_guild_time(ctx, time)
+
+    @staticmethod
+    async def _send_current_time(ctx):
+        now = datetime.datetime.utcnow()
+        output = now.strftime(f'It is currently: %A, %B {now.day}, %Y, %I:%M:%S %p (GMT).')
+        await ctx.send(output)
+
+    async def _update_guild_time(self, ctx, time):
+        time = self._parse_time(time)
+        if time is not None:
+            guild_id = ctx.guild.id
+            self._update_guild_settings(guild_id, time)
+            await ctx.send(f'The guild\'s subscriptions will come {time}:00 GMT daily.')
+        else:
+            await ctx.send('You didn\'t specify a valid time.')
+
+    def _parse_time(self, time):
         # If the user specified an integer, it's possibly 24-hour time
-        elif time in re.findall(r'[0-9]+', time):
+        if time in re.findall(r'[0-9]+', time):
             time = int(time)
         # If a meridiem was possibly specified
         else:
@@ -159,34 +200,36 @@ class Lectionary(commands.Cog):
                 time = int(match.group(1))
                 if match.group(2) == 'pm': time += 12
             else:
-                await ctx.send('You didn\'t specify a valid time.')
-                return
+                return None
 
         if not (self.EARLIEST_TIME <= time <= self.LATEST_TIME):
-            await ctx.send(f'You need to specify a time from {self.EARLIEST_TIME} to {self.LATEST_TIME} GMT.')
-            return
+            return None
 
-        guild_id = ctx.guild.id
+        return time
 
+    @staticmethod
+    def _update_guild_settings(guild_id, time):
+        conn = db.get_conn()
         c = conn.cursor()
-
-        c.execute('SELECT * FROM GuildSettings WHERE guild_id = %s', (guild_id,))
-        setting = c.fetchone()
-        if setting:
-            c.execute('UPDATE GuildSettings SET time = %s WHERE guild_id = %s', (time, guild_id))
-        else:
-            c.execute('INSERT INTO GuildSettings VALUES (%s, %s)', (guild_id, time))
-
-        conn.commit()
-
-        await ctx.send(f'The guild\'s subscriptions will come {time}:00 GMT daily.')
+        try:
+            c.execute('SELECT * FROM GuildSettings WHERE guild_id = %s', (guild_id,))
+            setting = c.fetchone()
+            if setting:
+                c.execute('UPDATE GuildSettings SET time = %s WHERE guild_id = %s', (time, guild_id))
+            else:
+                c.execute('INSERT INTO GuildSettings VALUES (%s, %s)', (guild_id, time))
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            raise e
+        finally:
+            db.put_conn(conn)
 
     @commands.command(aliases=['sub'])
     @commands.has_permissions(manage_messages=True)
     async def subscribe(self, ctx, lectionary=None, channel: typing.Optional[discord.TextChannel] = None):
-
         if lectionary is None:
-            await ctx.send(embed=self._build_subcriptions_list(ctx))
+            await ctx.send(embed=self._build_subscriptions_list(ctx))
             return
 
         sub_type = self._index_lectionary_name(lectionary)
@@ -195,107 +238,143 @@ class Lectionary(commands.Cog):
             await ctx.send('You didn\'t specify a valid lectionary option.')
             return
 
-        c = conn.cursor()
-
-        if channel:
-            channel_id = channel.id
-        else:
-            channel_id = ctx.channel.id
-
+        channel_id = self._get_channel_id(ctx, channel)
         guild_id = ctx.guild.id
 
-        # Check to see if the guild has a settings entry yet
-        c.execute('SELECT * FROM GuildSettings WHERE guild_id = %s', (guild_id,))
-        row = c.fetchone()
-        if not row:
-            # If not, create a default entry for the guild
-            c.execute('INSERT INTO GuildSettings VALUES (%s, %s)', (guild_id, self.EARLIEST_TIME))
+        self._check_or_create_guild(guild_id)
+        self._check_subscription_and_add(ctx, channel_id, sub_type, guild_id)
 
-        # Check if the given channel is already subscribed to the given lectionary
-        c.execute('SELECT * FROM Subscriptions WHERE channel_id=%s AND sub_type=%s', (channel_id, sub_type))
-        row = c.fetchone()
-        sub_name = self.lectionary_names[sub_type].title()
-        if row:
-            await ctx.send(f'<#{channel_id}> is already subscribed to the {sub_name} lectionary.')
+    @staticmethod
+    def _get_channel_id(ctx, channel):
+        if channel:
+            return channel.id
         else:
-            # Check to make sure there aren't too many subscriptions already
-            c.execute('SELECT COUNT(guild_id) FROM Subscriptions WHERE guild_id=%s', (guild_id,))
-            if c.fetchone()[0] >= self.MAX_SUBSCRIPTIONS:
-                await ctx.send(f'You can\'t have more than {self.MAX_SUBSCRIPTIONS} subscriptions per guild.')
-            else:
-                c.execute('INSERT INTO Subscriptions VALUES (%s, %s, %s)', (guild_id, channel_id, sub_type))
-                conn.commit()
-                await ctx.send(f'<#{channel_id}> has been subscribed to the {sub_name} lectionary.')
+            return ctx.channel.id
 
-        conn.commit()
+    def _check_or_create_guild(self, guild_id):
+        conn = db.get_conn()
+        c = conn.cursor()
+        try:
+            # Check to see if the guild has a settings entry yet
+            c.execute('SELECT * FROM GuildSettings WHERE guild_id = %s', (guild_id,))
+            row = c.fetchone()
+            if not row:
+                # If not, create a default entry for the guild
+                c.execute('INSERT INTO GuildSettings VALUES (%s, %s)', (guild_id, self.EARLIEST_TIME))
+            conn.commit()
+
+        except Exception as e:
+            conn.rollback()
+            raise e
+
+        finally:
+            db.put_conn(conn)
+
+    async def _check_subscription_and_add(self, ctx, channel_id, sub_type, guild_id):
+        conn = db.get_conn()
+        c = conn.cursor()
+        try:
+            # Check if the given channel is already subscribed to the given lectionary
+            c.execute('SELECT * FROM Subscriptions WHERE channel_id=%s AND sub_type=%s', (channel_id, sub_type))
+            row = c.fetchone()
+            sub_name = self.lectionary_names[sub_type].title()
+            if row:
+                await ctx.send(f'<#{channel_id}> is already subscribed to the {sub_name} lectionary.')
+            else:
+                # Check to make sure there aren't too many subscriptions already
+                c.execute('SELECT COUNT(guild_id) FROM Subscriptions WHERE guild_id=%s', (guild_id,))
+                if c.fetchone()[0] >= self.MAX_SUBSCRIPTIONS:
+                    await ctx.send(f'You can\'t have more than {self.MAX_SUBSCRIPTIONS} subscriptions per guild.')
+                else:
+                    c.execute('INSERT INTO Subscriptions VALUES (%s, %s, %s)', (guild_id, channel_id, sub_type))
+                    conn.commit()
+                    await ctx.send(f'<#{channel_id}> has been subscribed to the {sub_name} lectionary.')
+            conn.commit()
+
+        except Exception as e:
+            conn.rollback()
+            raise e
+
+        finally:
+            db.put_conn(conn)
 
     @commands.command(aliases=['unsub'])
     @commands.has_permissions(manage_messages=True)
     async def unsubscribe(self, ctx, channel: discord.TextChannel = None, lectionary: str = None):
+        conn = db.get_conn()
         c = conn.cursor()
 
-        if (channel is None) and (lectionary is None):
-            # Remove all the guild's subscriptions
-            c.execute('DELETE FROM GuildSettings WHERE guild_id = %s', (ctx.guild.id,))
+        try:
+            if (channel is None) and (lectionary is None):
+                # Remove all the guild's subscriptions
+                c.execute('DELETE FROM GuildSettings WHERE guild_id = %s', (ctx.guild.id,))
+                await ctx.send(f'All subscriptions for {ctx.guild.name} have been removed.')
+
+            elif isinstance(channel, discord.TextChannel):
+                # Remove all subscriptions for the given channel
+                channel_id = channel.id
+
+                if lectionary is None:
+                    c.execute('DELETE FROM Subscriptions WHERE channel_id = %s', (channel_id,))
+                    await ctx.send(f'<#{channel_id}> has been unsubscribed from all lectionaries.')
+                else:
+                    sub_type = self._index_lectionary_name(lectionary)
+
+                    if sub_type == -1:
+                        await ctx.send('You didn\'t specify a valid lectionary option.')
+                        return
+
+                    c.execute('DELETE FROM Subscriptions WHERE channel_id = %s AND sub_type = %s',
+                              (channel_id, sub_type))
+                    await ctx.send(
+                        f'<#{channel_id}> has been unsubscribed from the {self.lectionary_names[sub_type].title()} lectionary.')
+
+            else:
+                await ctx.send('You didn\'t specify a valid unsubscription option.')
             conn.commit()
-            await ctx.send(f'All subscriptions for {ctx.guild.name} have been removed.')
 
-        elif isinstance(channel, discord.TextChannel) and (lectionary is None):
-            # Remove all subscriptions for the given channel
-            channel_id = channel.id
-            c.execute('DELETE FROM Subscriptions WHERE channel_id = %s', (channel_id,))
-            conn.commit()
-            await ctx.send(f'<#{channel_id}> has been unsubscribed from all lectionaries.')
+        except Exception as e:
+            conn.rollback()
+            raise e
 
-        elif isinstance(channel, discord.TextChannel) and (lectionary is not None):
-            # Remove specific subscriptions for the given channel
-            channel_id = channel.id
+        finally:
+            db.put_conn(conn)
 
-            if lectionary is None:
-                c.execute('DELETE FROM Subscriptions WHERE channel_id = %s', (channel_id,))
-                conn.commit()
-                await ctx.send(f'<#{channel_id}> has been unsubscribed from all lectionaries.')
-                return
-
-            sub_type = self._index_lectionary_name(lectionary)
-
-            if sub_type == -1:
-                conn.rollback()
-                await ctx.send('You didn\'t specify a valid lectionary option.')
-                return
-
-            c.execute('DELETE FROM Subscriptions WHERE channel_id = %s AND sub_type = %s', (channel_id, sub_type))
-            conn.commit()
-            await ctx.send(
-                f'<#{channel_id}> has been unsubscribed from the {self.lectionary_names[sub_type].title()} lectionary.')
-
-        else:
-            await ctx.send('You didn\'t specify a valid unsubscription option.')
-
-    def _build_subcriptions_list(self, ctx):
-        '''
+    def _build_subscriptions_list(self, ctx):
+        """
         Helper method to generate an embed listing the subscriptions for a
         guild given the guild id.
-        '''
+        """
+        time, subscriptions = self._get_subscriptions(ctx)
+        embed = self._create_embed(ctx, time, subscriptions)
+        return embed
 
+    def _get_subscriptions(self, ctx):
+        conn = db.get_conn()
         c = conn.cursor()
+        try:
+            c.execute('SELECT time FROM GuildSettings WHERE guild_id = %s', (ctx.guild.id,))
+            time = c.fetchone()
+            if not time:
+                time = self.EARLIEST_TIME
+                c.execute('INSERT INTO GuildSettings VALUES (%s, %s)', (ctx.guild.id, time))
+                conn.commit()
 
-        c.execute('SELECT time FROM GuildSettings WHERE guild_id = %s', (ctx.guild.id,))
-        time = c.fetchone()
-        if time:
-            # This check is here to prevent a "Nonetype cannot be subscripted" error
-            time = time[0]
-        else:
-            time = self.EARLIEST_TIME
-            c.execute('INSERT INTO GuildSettings VALUES (%s, %s)', (ctx.guild.id, time))
+            c.execute('SELECT * FROM Subscriptions WHERE guild_id = %s', (ctx.guild.id,))
+            subscriptions = c.fetchall()
+            conn.commit()
 
-        conn.commit()
+        except Exception as e:
+            conn.rollback()
+            # You should log the exception here
+            raise e
 
-        # Get all the subscription entries for the current guild
-        c.execute('SELECT * FROM Subscriptions WHERE guild_id = %s', (ctx.guild.id,))
-        subscriptions = c.fetchall()
-        conn.commit()
+        finally:
+            db.put_conn(conn)
 
+        return time, subscriptions
+
+    def _create_embed(self, ctx, time, subscriptions):
         embed = discord.Embed(title=f'Subscriptions for {ctx.guild.name}')
         if subscriptions:
             embed.description = ''
@@ -315,108 +394,150 @@ class Lectionary(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def shutdown(self, ctx):
-        '''
+        """
         Command to safely shutdown the bot with a reduced chance of
         damaging the database. (Bot owner only.)
-        '''
-        self.fufill_subscriptions.stop()
-        await ctx.message.add_reaction('✅')
-        log('Shutdown request, logging out')
-        await ctx.bot.close()
+        """
+        try:
+            self.fulfill_subscriptions.stop()
+            await ctx.message.add_reaction('✅')
+            log('Shutdown request, logging out')
+            await ctx.bot.close()
+        except Exception as e:
+            log('An error occurred during shutdown: ' + str(e))
+            await ctx.send(f'An error occurred during shutdown: {e}')
 
     @commands.command()
     @commands.is_owner()
     async def push(self, ctx, current_hour: int = datetime.datetime.utcnow().hour):
         log(f'Manual subscription push requested for {current_hour}:00 GMT')
 
-        if (self.EARLIEST_TIME <= current_hour <= self.LATEST_TIME):
-            if (current_hour == self.EARLIEST_TIME): self.regenerate_all()
-            await ctx.message.add_reaction('✅')
-            await self.push_subscriptions(current_hour)
-        else:
-            await ctx.message.add_reaction('❌')
-            log('Push failed.')
+        try:
+            if self.EARLIEST_TIME <= current_hour <= self.LATEST_TIME:
+                # Regenerate all if it's the earliest time
+                if current_hour == self.EARLIEST_TIME:
+                    self.regenerate_all()
+
+                await ctx.message.add_reaction('✅')
+                await self.push_subscriptions(current_hour)
+            else:
+                await ctx.message.add_reaction('❌')
+                log(f'Push failed. current_hour={current_hour} is outside the acceptable range.')
+        except Exception as e:
+            log(f'An error occurred during push: {e}')
+            await ctx.send(f'An error occurred during push: {e}')
 
     '''SUBSCRIPTIONS TASK LOOP'''
 
     @tasks.loop(minutes=10)
-    async def fufill_subscriptions(self):
+    async def fulfill_subscriptions(self):
         # Push the current hour's subscriptions if they haven't been already
         current_hour = datetime.datetime.utcnow().hour
 
         if (self.EARLIEST_TIME <= current_hour <= self.LATEST_TIME) and (self.last_fulfill != current_hour):
+            log(f"Starting to fulfill subscriptions for {current_hour} hour")
             # Make sure the lectionary embeds are updated for the day
-            if (current_hour == self.EARLIEST_TIME): self.regenerate_all()
+            if current_hour == self.EARLIEST_TIME:
+                self.regenerate_all()
 
-            await self.push_subscriptions(current_hour)
-            self.last_fulfill = current_hour
+            try:
+                await self.push_subscriptions(current_hour)
+                self.last_fulfill = current_hour
+                log(f"Successfully fulfilled subscriptions for {current_hour} hour")
+            except Exception as e:
+                log(f"Error during fulfilling subscriptions for {current_hour} hour: {e}")
 
-    @fufill_subscriptions.before_loop
-    async def before_fufill_subscriptions(self):
+    @fulfill_subscriptions.before_loop
+    async def before_fulfill_subscriptions(self):
         await self.bot.wait_until_ready()
 
     '''SUBSCRIPTIONS HELPER METHODS'''
 
     async def _remove_deleted_guilds(self):
-        '''
+        """
         Helper method to purge the settings of deleted guilds from
         the database. The ON CASCADE DELETE option in the database
         also makes this wipe the subscriptions automatically.
-        '''
+        """
+        conn = db.get_conn()
         c = conn.cursor()
+        try:
+            c.execute('SELECT guild_id FROM GuildSettings')
+            guild_ids = [item[0] for item in c.fetchall()]
 
-        c.execute('SELECT guild_id FROM GuildSettings')
-        guild_ids = [item[0] for item in c.fetchall()]
+            total = len(guild_ids)
 
-        total = len(guild_ids)
-        count = 0
+            log(f"Checking {total} guilds for deletion")
 
-        for guild_id in guild_ids:
-            if not self.bot.get_guild(guild_id):
-                c.execute('DELETE FROM GuildSettings WHERE guild_id = %s', (guild_id,))
-                count += 1
+            deleted_guild_ids = [guild_id for guild_id in guild_ids if not self.bot.get_guild(guild_id)]
 
-        conn.commit()
+            count = len(deleted_guild_ids)
 
-        if (count > 0): log(f'Purged {count} out of {total} guilds')
+            if deleted_guild_ids:
+                # Create query for batch deletion
+                query = "DELETE FROM GuildSettings WHERE guild_id IN %s"
+                c.execute(query, (tuple(deleted_guild_ids),))
+
+                conn.commit()
+
+                log(f'Purged {count} out of {total} guilds')
+
+        except Exception as e:
+            conn.rollback()
+            log(f"Error during guild purge: {e}")
+            raise e
+
+        finally:
+            db.put_conn(conn)
 
     async def push_subscriptions(self, hour):
         await self._remove_deleted_guilds()
-
+        conn = db.get_conn()
         c = conn.cursor()
+        try:
+            # Get all subscriptions for the guilds that have their time preference
+            # set to the given hour
+            c.execute('''
+                SELECT Subscriptions.channel_id, Subscriptions.sub_type
+                FROM Subscriptions
+                INNER JOIN GuildSettings
+                ON Subscriptions.guild_id = GuildSettings.guild_id
+                WHERE GuildSettings.time = %s
+            ''', (hour,))
 
-        # Get all subscriptions for the guilds that have their time preference
-        # set to the given hour
-        c.execute('''
-            SELECT Subscriptions.channel_id, Subscriptions.sub_type
-            FROM Subscriptions
-            INNER JOIN GuildSettings
-            ON Subscriptions.guild_id = GuildSettings.guild_id
-            WHERE GuildSettings.time = %s
-        ''', (hour,))
+            subscriptions = c.fetchall()
+            total_subs = len(subscriptions)
+            successful_subs = 0
 
-        feeds = [
-            self.lectionaries[index].build_json()
-            for index in range(len(self.lectionaries))
-        ]
+            if total_subs > 0:
+                log(f"Preparing to push {total_subs} subscription(s) for {hour}:00 GMT")
 
-        subscriptions = c.fetchall()
-        # Each subscription is a tuple: (channel_id, sub_type)
-        for subscription in subscriptions:
-            channel_id = subscription[0]
-            channel = self.bot.get_channel(channel_id)
-            sub_type = subscription[1]
+            # Each subscription is a tuple: (channel_id, sub_type)
+            for subscription in subscriptions:
+                channel_id = subscription[0]
+                sub_type = subscription[1]
+                channel = self.bot.get_channel(channel_id)
 
-            if channel:
-                for item in feeds[sub_type]:
-                    await channel.send(embed=discord.Embed.from_dict(item))
-            else:
-                c.execute('DELETE FROM Subscriptions WHERE channel_id = %s', (channel_id,))
+                if channel:
+                    feed = self.lectionaries[sub_type].build_json()
+                    for item in feed:
+                        await channel.send(embed=discord.Embed.from_dict(item))
+                    successful_subs += 1
+                else:
+                    c.execute('DELETE FROM Subscriptions WHERE channel_id = %s', (channel_id,))
 
-        conn.commit()
+            conn.commit()
 
-        if (len(subscriptions) > 0):
-            log(f'Pushed {len(subscriptions)} subscription(s) for {hour}:00 GMT')
+            if successful_subs > 0:
+                log(f'Successfully pushed {successful_subs} out of {total_subs} subscriptions for {hour}:00 GMT')
+
+        except Exception as e:
+            conn.rollback()
+            log(f"Error while pushing subscriptions for {hour}:00 GMT: {e}")
+            raise e
+
+        finally:
+            db.put_conn(conn)
 
 
 async def setup(bot):
