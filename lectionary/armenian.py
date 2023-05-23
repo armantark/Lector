@@ -1,7 +1,25 @@
 import datetime
+import logging
+
 import requests
 from bs4 import BeautifulSoup, NavigableString
+
 from helpers import bible_url, date_expand
+
+# Create a custom logger
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# Create console handler
+c_handler = logging.StreamHandler()
+c_handler.setLevel(logging.INFO)
+
+# Create formatter and add it to handler
+c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+c_handler.setFormatter(c_format)
+
+# Add handler to the logger
+logger.addHandler(c_handler)
 
 
 class ArmenianLectionary:
@@ -42,7 +60,8 @@ class ArmenianLectionary:
         try:
             r = requests.get(url, headers={'User-Agent': ''})
             r.raise_for_status()
-        except requests.exceptions.RequestException:
+        except requests.exceptions.RequestException as e:
+            logger.error(f'Failed to get synaxarium: {e}')
             return ''
 
         soup = BeautifulSoup(r.text, 'html.parser')
@@ -58,7 +77,7 @@ class ArmenianLectionary:
             r.raise_for_status()
         except requests.exceptions.RequestException as e:
             self.clear()
-            print(f'Request failed due to {str(e)}')
+            logger.error(f'Request failed: {e}')
             return
 
         soup = BeautifulSoup(r.text, 'html.parser')
@@ -97,6 +116,7 @@ class ArmenianLectionary:
 
     def build_json(self):
         if not self.ready:
+            logger.warning('Data not ready for JSON build.')
             return []
 
         return [
