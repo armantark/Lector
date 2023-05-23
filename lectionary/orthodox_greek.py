@@ -37,56 +37,43 @@ class OrthodoxGreekLectionary:
         self.ready = False
 
     def regenerate(self):
-        self.today = datetime.date.today()
-        self.url = self.today.strftime('https://www.goarch.org/chapel?date=%m/%d/%Y')
-
-        self.title = date_expand.expand(self.today)
-
         try:
-            # The request needs a 'User-Agent' header, or there will be a 403
+            self.today = datetime.date.today()
+            self.url = self.today.strftime('https://www.goarch.org/chapel?date=%m/%d/%Y')
+            self.title = date_expand.expand(self.today)
             r = requests.get(self.url, headers={'User-Agent': 'User'})
             r.raise_for_status()
-        except requests.exceptions.RequestException:
-            self.clear()
-            return
+            soup = BeautifulSoup(r.text, 'html.parser')
 
-        soup = BeautifulSoup(r.text, 'html.parser')
+            icon_element = soup.select_one('[class="commemorate-left"]>div>img')
+            if icon_element is None:
+                raise Exception("Unable to locate icon on webpage.")
+            self.icon_url = icon_element['src']
 
-        # Icon url
-        icon_element = soup.select_one('[class="commemorate-left"]>div>img')
-        self.icon_url = icon_element['src'] if icon_element else None
+            fast_element = soup.select_one('[class="oc-fasting"]')
+            if fast_element is None:
+                raise Exception("Unable to locate fasting information on webpage.")
+            self.fast = fast_element.text.strip().split(' | ')
 
-        # Fast
-        # This should always be a two-element list
-        fast_element = soup.select_one('[class="oc-fasting"]')
-        self.fast = fast_element.text.strip().split(' | ') if fast_element else None
-
-        # Readings
-        readings_element = soup.select_one('[class="oc-readings"]')
-        if readings_element:
+            readings_element = soup.select_one('[class="oc-readings"]')
+            if readings_element is None:
+                raise Exception("Unable to locate reading information on webpage.")
             raw_readings = readings_element.text.split('\n' * 7)
             readings = [item.strip().replace(' Reading', '') for item in raw_readings]
             self.readings = [f'{item[0]} <a>{item[1]}</a>' for item in [line.split('\n\n') for line in readings]]
 
-        # Second Request for All Saints & Feasts
-        url = self.today.strftime('https://www.goarch.org/chapel/search?month=%m&day=%d')
-        log(url)
-
-        try:
+            url = self.today.strftime('https://www.goarch.org/chapel/search?month=%m&day=%d')
+            log(url)
             r = requests.get(url, headers={'User-Agent': ''})
             r.raise_for_status()
-        except requests.exceptions.RequestException:
+            soup = BeautifulSoup(r.text, 'html.parser')
+            self.saints_feasts = [(f'[{item.a.text}]({item.a["href"]})' if item.a else item.span.text) for item in soup.select('[class="ss-result-element"]')]
+
+            self.ready = True
+
+        except Exception as e:
+            log(f"An error occurred while scraping the Greek Orthodox Lectionary: {str(e)}")
             self.clear()
-            return
-
-        soup = BeautifulSoup(r.text, 'html.parser')
-
-        self.saints_feasts = [
-            (f'[{item.a.text}]({item.a["href"]})' if item.a else item.span.text)
-            for item in soup.select('[class="ss-result-element"]')
-        ]
-
-        self.ready = True
 
     def build_json(self):
         if not self.ready: return []

@@ -1,6 +1,6 @@
 import datetime
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString
 from helpers import bible_url, date_expand
 
 
@@ -78,11 +78,9 @@ class ArmenianLectionary:
         self.ready = True
 
     def _parse_readings(self, soup):
-        readings_raw_select = soup.select('h3[style]')
-        readings = "".join(
-            reading.text + '\n' if reading.text[-1].isdigit() else reading.text
-            for reading in readings_raw_select
-        )
+        readings_raw_select = soup.select('h3')[1]
+        readings = '\n'.join(
+            str(content).strip() for content in readings_raw_select.contents if isinstance(content, NavigableString))
 
         for original, substitute in self.SUBSTITUTIONS.items():
             readings = readings.replace(original, substitute)
