@@ -47,7 +47,6 @@ class OrthodoxRussianLectionary:
               f'&today={self.today.day}' \
               f'&year={self.today.year}' \
               f'&dt=1&header=1&lives=1&trp=2&scripture=2'
-        logger.info(url)
         return url
 
     def _fetch_page_content(self):
