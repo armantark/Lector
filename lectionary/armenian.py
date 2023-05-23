@@ -41,8 +41,7 @@ class ArmenianLectionary:
         """
         Get the daily synaxarium (and implicit color)
         """
-        url = self.today.strftime('https://www.qahana.am/en/holidays/%Y-%m-%d/1')
-
+        url = self.today.strftime('https://ststepanos.org/calendars/category/dominicalfeasts/%Y-%m-%d/')
         try:
             r = requests.get(url, headers={'User-Agent': ''})
             r.raise_for_status()
@@ -52,7 +51,10 @@ class ArmenianLectionary:
 
         soup = BeautifulSoup(r.text, 'html.parser')
 
-        return url if soup.select_one('div[class^="holidayItem"]>h2') else ''
+        # Check if the synaxarium link exists on the page
+        event_link_element = soup.select_one('h3[class^="tribe-events-list-event-title summary"]>a')
+        # Return the link if it exists, else return an empty string
+        return url if event_link_element else ''
 
     def regenerate(self):
         self.today = datetime.date.today()
@@ -80,6 +82,9 @@ class ArmenianLectionary:
             self.readings = []
 
         self.notes_url = self._get_notes_url(r, soup)
+
+        self.synaxarium = self.get_synaxarium()
+
         self.ready = True
 
     def _parse_readings(self, soup):

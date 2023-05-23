@@ -47,7 +47,7 @@ class OrthodoxRussianLectionary:
               f'&today={self.today.day}' \
               f'&year={self.today.year}' \
               f'&dt=1&header=1&lives=1&trp=2&scripture=2'
-        logger.debug(url)
+        # logger.info(url)
         return url
 
     def _fetch_page_content(self):
@@ -96,8 +96,12 @@ class OrthodoxRussianLectionary:
 
     @staticmethod
     def _extract_readings(soup):
-        readings = soup.select_one('span[class="normaltext"]:nth-child(5)')
-        readings = [str(item) for item in readings.contents]
+        readings_elements = soup.select('span[class="normaltext"]')
+        if len(readings_elements) < 2:  # make sure there are at least two elements
+            logger.error("Couldn't find the readings on the page")
+            return None
+        readings_element = readings_elements[1]  # it seems the readings are in the second 'normaltext' span
+        readings = [str(item) for item in readings_element.contents]
         readings = ''.join(readings).replace('\n', '').replace('<br/>', '\n').strip()
         readings = re.sub(r'<a.*>([^<>]*)</a>', r'<a>\1</a>', readings)  # Collapse the Bible links to what's necessary
         readings = re.sub(r'<em>([^<>]*)</em>', r'*\1*', readings)  # Italicize lines that are wrapped in the <em> tag
