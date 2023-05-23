@@ -138,6 +138,7 @@ class Lectionary(commands.Cog):
             lectionary = self._get_or_regenerate_lectionary(index)
             if lectionary is None:
                 await ctx.message.add_reaction('❌')
+                ctx.send("Lectionary failed. Please report to the bot owner (@Tarkavor) for assistance.")
                 return
 
             await self.send_lectionary(ctx, lectionary)
@@ -242,7 +243,7 @@ class Lectionary(commands.Cog):
         guild_id = ctx.guild.id
 
         self._check_or_create_guild(guild_id)
-        self._check_subscription_and_add(ctx, channel_id, sub_type, guild_id)
+        await self._check_subscription_and_add(ctx, channel_id, sub_type, guild_id)
 
     @staticmethod
     def _get_channel_id(ctx, channel):

@@ -76,7 +76,27 @@ class OrthodoxGreekLectionary:
             self.clear()
 
     def build_json(self):
-        if not self.ready: return []
+        if not self.ready:
+            return [
+                {
+                    'title': 'Greek Orthodox Lectionary',
+                    'color': 0xA68141,  # Golden brown
+                    'footer': {'text': 'Sorry for the inconvenience.'},
+                    'author': {
+                        'name': 'Greek Orthodox Lectionary',
+                        'url': self.url
+                    },
+                    'fields': [
+                        {
+                            'name': 'This lectionary is not currently supported',
+                            'value': 'Due to a change in the website structure, '
+                                     'this lectionary is not currently supported. '
+                                     'We are trying to find another source in the meantime.',
+                            'inline': False
+                        }
+                    ]
+                }
+            ]
 
         return [
             {
