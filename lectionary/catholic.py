@@ -4,8 +4,9 @@ import re
 import requests
 from bs4 import BeautifulSoup
 
-from helpers import bible_url
-from helpers import date_expand
+from helpers import bible_url, date_expand, logger
+
+logger = logger.get_logger(__name__)
 
 
 class CatholicPage:
@@ -15,6 +16,13 @@ class CatholicPage:
     """
 
     def __init__(self, today, url, source_text=None):
+        self.sections = None
+        self.footer = None
+        self.ready = None
+        self.footer = None
+        self.ready = None
+        self.desc = None
+        self.title = None
         self.today = today
         self.url = url
         self.clear()
@@ -41,9 +49,9 @@ class CatholicPage:
             r = requests.get(url)
             if r.status_code == 200:
                 return r
-        except requests.exceptions.RequestException:
-            pass
-        return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f'Failed to make request: {e}')
+            return None
 
     def parse_source_text(self, source_text):
         soup = BeautifulSoup(source_text, 'html.parser')
@@ -231,7 +239,8 @@ class CatholicLectionary:
             self.clear()
             return False
 
-    def _fetch_page_content(self, url):
+    @staticmethod
+    def _fetch_page_content(url):
         try:
             r = requests.get(url)
             if r.status_code == 200:
