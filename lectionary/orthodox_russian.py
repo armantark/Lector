@@ -56,16 +56,16 @@ class OrthodoxRussianLectionary:
             r.raise_for_status()
             return r.text
         except requests.exceptions.HTTPError as errh:
-            logger.error(f"HTTP Error: {errh}")
+            logger.error(f"HTTP Error: {errh}", exc_info=True)
             return None
         except requests.exceptions.ConnectionError as errc:
-            logger.error(f"Error Connecting: {errc}")
+            logger.error(f"Error Connecting: {errc}", exc_info=True)
             return None
         except requests.exceptions.Timeout as errt:
-            logger.error(f"Timeout Error: {errt}")
+            logger.error(f"Timeout Error: {errt}", exc_info=True)
             return None
         except requests.exceptions.RequestException as err:
-            logger.error(f"Something Else: {err}")
+            logger.error(f"Something Else: {err}", exc_info=True)
             return None
 
     def _scrape_page_content(self, page_content):
@@ -76,7 +76,7 @@ class OrthodoxRussianLectionary:
             self.readings = self._extract_readings(soup)
             self.troparion = self._extract_troparion(soup)
         except Exception as e:
-            logger.error(f"Failed to parse the webpage: {e}")
+            logger.error(f"Failed to parse the webpage: {e}", exc_info=True)
 
     @staticmethod
     def _extract_title_and_subtitles(soup):
@@ -141,7 +141,7 @@ class OrthodoxRussianLectionary:
     def _build_readings_embed(self):
         return {
             'title': 'The Scripture Readings',
-            'description': bible_url.html_convert(self.readings),
+            'description': bible_url.html_convert(' '.join(self.readings)),
         }
 
     def _build_troparion_embed(self):

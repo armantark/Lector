@@ -47,7 +47,7 @@ class ArmenianLectionary:
             r = requests.get(url, headers={'User-Agent': ''})
             r.raise_for_status()
         except requests.exceptions.RequestException as e:
-            logger.error(f'Failed to get synaxarium: {e}')
+            logger.error(f'Failed to get synaxarium: {e}', exc_info=True)
             return ''
 
         soup = BeautifulSoup(r.text, 'html.parser')
@@ -63,7 +63,7 @@ class ArmenianLectionary:
             r.raise_for_status()
         except requests.exceptions.RequestException as e:
             self.clear()
-            logger.error(f'Request failed: {e}')
+            logger.error(f'Request failed: {e}', exc_info=True)
             return
 
         soup = BeautifulSoup(r.text, 'html.parser')
