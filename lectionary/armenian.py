@@ -63,9 +63,9 @@ class ArmenianLectionary:
 
         soup = BeautifulSoup(r.text, 'html.parser')
 
-        h2_elements = soup.select('h2')
-        if len(h2_elements) > 0:
-            self.title = h2_elements[0].text
+        h3_elements = soup.select('h3')
+        if len(h3_elements) > 0:
+            self.title = h3_elements[0].text
             self.subtitle = date_expand.auto_expand(self.today, self.title)
             readings = self._parse_readings(soup)
             self.readings = readings.split('\n') if readings != '[No readings for this day]' else [readings]
@@ -78,7 +78,7 @@ class ArmenianLectionary:
         self.ready = True
 
     def _parse_readings(self, soup):
-        readings_raw_select = soup.select('h4[style]')
+        readings_raw_select = soup.select('h3[style]')
         readings = "".join(
             reading.text + '\n' if reading.text[-1].isdigit() else reading.text
             for reading in readings_raw_select

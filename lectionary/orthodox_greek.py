@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 
 from helpers import bible_url
 from helpers import date_expand
+from helpers.logger import log
 
 
 class OrthodoxGreekLectionary:
@@ -69,6 +70,7 @@ class OrthodoxGreekLectionary:
 
         # Second Request for All Saints & Feasts
         url = self.today.strftime('https://www.goarch.org/chapel/search?month=%m&day=%d')
+        log(url)
 
         try:
             r = requests.get(url, headers={'User-Agent': ''})

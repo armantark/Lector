@@ -1,14 +1,22 @@
-from num2words import num2words
+def ordinal(n):
+    """Returns an ordinal string for a number (e.g., 2 -> '2nd')"""
+    suffix = ['th', 'st', 'nd', 'rd', 'th', 'th', 'th', 'th', 'th', 'th']
+    if 10 <= n < 20:
+        return str(n) + 'th'
+    else:
+        return str(n) + suffix[n % 10]
 
 
 def expand(dateobject):
     """Given a date object, returns a specially formatted string representing it w/ the weekday"""
-    return dateobject.strftime(f'%A, %B {dateobject.day}{num2words(dateobject.day, ordinal=True)}, %Y')
+    day_as_ordinal = ordinal(dateobject.day)
+    return dateobject.strftime(f'%A, %B {day_as_ordinal}, %Y')
 
 
 def expand_no_weekday(dateobject):
     """Given a date object, returns a specially formatted string representing it w/o the weekday"""
-    return dateobject.strftime(f'%B {dateobject.day}{num2words(dateobject.day, ordinal=True)}, %Y')
+    day_as_ordinal = ordinal(dateobject.day)
+    return dateobject.strftime(f'%B {day_as_ordinal}, %Y')
 
 
 def auto_expand(dateobject, text):
