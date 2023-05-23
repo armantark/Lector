@@ -47,7 +47,7 @@ class OrthodoxRussianLectionary:
               f'&today={self.today.day}' \
               f'&year={self.today.year}' \
               f'&dt=1&header=1&lives=1&trp=2&scripture=2'
-        # logger.info(url)
+        logger.info(url)
         return url
 
     def _fetch_page_content(self):
@@ -82,8 +82,8 @@ class OrthodoxRussianLectionary:
     def _extract_title_and_subtitles(soup):
         title = soup.select_one('span[class="dataheader"]').text
         a = soup.select_one('span[class="headerheader"]').text
-        b = soup.select_one('span[class="headerheader"]>span').text
-        subtitles = [item for item in [a.replace(b, ''), b.strip()] if item]
+        b = soup.select_one('span[class="headerheader"]>span').text.strip()
+        subtitles = [item for item in [a.replace(b, '').strip(), b] if item]
         return title, subtitles
 
     @staticmethod
@@ -145,7 +145,7 @@ class OrthodoxRussianLectionary:
     def _build_readings_embed(self):
         return {
             'title': 'The Scripture Readings',
-            'description': bible_url.html_convert(' '.join(self.readings)),
+            'description': bible_url.html_convert(''.join(self.readings)),
         }
 
     def _build_troparion_embed(self):
