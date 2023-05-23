@@ -57,7 +57,7 @@ def html_convert(text):
     In: "God creates everything\nin <a>Genesis 1:1</a>"
     Out: "God creates everything\nin [Genesis 1:1](https://www.example.com)"
     """
-    for match in re.findall(r'(<a>([^<>]*))', text):
+    for match in re.findall(r'(<\s*a\s*>([^<>]*)<\s*/\s*a\s*>)', text):
         text = text.replace(match[0], convert(match[1]))
 
     return text
