@@ -5,8 +5,8 @@ import typing
 import discord
 from discord.ext import commands, tasks
 
+from helpers import logger
 from helpers.bot_database import db
-from helpers.logger import log
 from lectionary.armenian import ArmenianLectionary
 from lectionary.bcp import BookOfCommonPrayer
 from lectionary.catholic import CatholicLectionary
@@ -15,6 +15,8 @@ from lectionary.orthodox_coptic import OrthodoxCopticLectionary
 from lectionary.orthodox_greek import OrthodoxGreekLectionary
 from lectionary.orthodox_russian import OrthodoxRussianLectionary
 from lectionary.rcl import RevisedCommonLectionary
+
+logger = logger.get_logger(__name__)
 
 
 class Lectionary(commands.Cog):
@@ -34,7 +36,7 @@ class Lectionary(commands.Cog):
 
         self._start_event_loop()
 
-        log(f'Bot booted. Will not fulfill subscriptions for {self.last_fulfill}:00 GMT or prior.')
+        logger.debug(f'Bot booted. Will not fulfill subscriptions for {self.last_fulfill}:00 GMT or prior.')
 
     def _start_event_loop(self):
         # Start up the event loop
@@ -43,7 +45,7 @@ class Lectionary(commands.Cog):
 
     @staticmethod
     def _init_sql_commands():
-        log('Initial data fetch')
+        logger.debug('Initial data fetch')
         # Initialize the database if it's not ready
         conn = db.get_conn()
         c = conn.cursor()
@@ -98,7 +100,7 @@ class Lectionary(commands.Cog):
     def regenerate_all(self):
         for index in range(len(self.lectionaries)):
             self.lectionaries[index].regenerate()
-        log('Refetched lectionary data')
+        logger.debug('Refetched lectionary data')
 
     @staticmethod
     def _index_lectionary_name(lectionary):
@@ -402,16 +404,16 @@ class Lectionary(commands.Cog):
         try:
             self.fulfill_subscriptions.stop()
             await ctx.message.add_reaction('✅')
-            log('Shutdown request, logging out')
+            logger.debug('Shutdown request, logging out')
             await ctx.bot.close()
         except Exception as e:
-            log('An error occurred during shutdown: ' + str(e))
+            logger.debug('An error occurred during shutdown: ' + str(e))
             await ctx.send(f'An error occurred during shutdown: {e}')
 
     @commands.command()
     @commands.is_owner()
     async def push(self, ctx, current_hour: int = datetime.datetime.utcnow().hour):
-        log(f'Manual subscription push requested for {current_hour}:00 GMT')
+        logger.debug(f'Manual subscription push requested for {current_hour}:00 GMT')
 
         try:
             if self.EARLIEST_TIME <= current_hour <= self.LATEST_TIME:
@@ -423,9 +425,9 @@ class Lectionary(commands.Cog):
                 await self.push_subscriptions(current_hour)
             else:
                 await ctx.message.add_reaction('❌')
-                log(f'Push failed. current_hour={current_hour} is outside the acceptable range.')
+                logger.debug(f'Push failed. current_hour={current_hour} is outside the acceptable range.')
         except Exception as e:
-            log(f'An error occurred during push: {e}')
+            logger.debug(f'An error occurred during push: {e}')
             await ctx.send(f'An error occurred during push: {e}')
 
     '''SUBSCRIPTIONS TASK LOOP'''
@@ -436,7 +438,7 @@ class Lectionary(commands.Cog):
         current_hour = datetime.datetime.utcnow().hour
 
         if (self.EARLIEST_TIME <= current_hour <= self.LATEST_TIME) and (self.last_fulfill != current_hour):
-            log(f"Starting to fulfill subscriptions for {current_hour} hour")
+            logger.debug(f"Starting to fulfill subscriptions for {current_hour} hour")
             # Make sure the lectionary embeds are updated for the day
             if current_hour == self.EARLIEST_TIME:
                 self.regenerate_all()
@@ -444,9 +446,9 @@ class Lectionary(commands.Cog):
             try:
                 await self.push_subscriptions(current_hour)
                 self.last_fulfill = current_hour
-                log(f"Successfully fulfilled subscriptions for {current_hour} hour")
+                logger.debug(f"Successfully fulfilled subscriptions for {current_hour} hour")
             except Exception as e:
-                log(f"Error during fulfilling subscriptions for {current_hour} hour: {e}")
+                logger.debug(f"Error during fulfilling subscriptions for {current_hour} hour: {e}")
 
     @fulfill_subscriptions.before_loop
     async def before_fulfill_subscriptions(self):
@@ -468,7 +470,7 @@ class Lectionary(commands.Cog):
 
             total = len(guild_ids)
 
-            log(f"Checking {total} guilds for deletion")
+            logger.debug(f"Checking {total} guilds for deletion")
 
             deleted_guild_ids = [guild_id for guild_id in guild_ids if not self.bot.get_guild(guild_id)]
 
@@ -481,11 +483,11 @@ class Lectionary(commands.Cog):
 
                 conn.commit()
 
-                log(f'Purged {count} out of {total} guilds')
+                logger.debug(f'Purged {count} out of {total} guilds')
 
         except Exception as e:
             conn.rollback()
-            log(f"Error during guild purge: {e}")
+            logger.debug(f"Error during guild purge: {e}")
             raise e
 
         finally:
@@ -511,7 +513,7 @@ class Lectionary(commands.Cog):
             successful_subs = 0
 
             if total_subs > 0:
-                log(f"Preparing to push {total_subs} subscription(s) for {hour}:00 GMT")
+                logger.debug(f"Preparing to push {total_subs} subscription(s) for {hour}:00 GMT")
 
             # Each subscription is a tuple: (channel_id, sub_type)
             for subscription in subscriptions:
@@ -530,11 +532,12 @@ class Lectionary(commands.Cog):
             conn.commit()
 
             if successful_subs > 0:
-                log(f'Successfully pushed {successful_subs} out of {total_subs} subscriptions for {hour}:00 GMT')
+                logger.debug(
+                    f'Successfully pushed {successful_subs} out of {total_subs} subscriptions for {hour}:00 GMT')
 
         except Exception as e:
             conn.rollback()
-            log(f"Error while pushing subscriptions for {hour}:00 GMT: {e}")
+            logger.debug(f"Error while pushing subscriptions for {hour}:00 GMT: {e}")
             raise e
 
         finally:

@@ -1,11 +1,12 @@
 import datetime
-import logging
 import re
 
 import requests
 from bs4 import BeautifulSoup
 
-from helpers import bible_url
+from helpers import bible_url, logger
+
+logger = logger.get_logger(__name__)
 
 
 class OrthodoxRussianLectionary:
@@ -15,7 +16,6 @@ class OrthodoxRussianLectionary:
         self.url = None
         self.today = None
         self.ready = None
-        self.logger = logging.getLogger(__name__)
         self._reset_attributes()
         self.regenerate()
 
@@ -47,7 +47,7 @@ class OrthodoxRussianLectionary:
               f'&today={self.today.day}' \
               f'&year={self.today.year}' \
               f'&dt=1&header=1&lives=1&trp=2&scripture=2'
-        self.logger.debug(url)
+        logger.debug(url)
         return url
 
     def _fetch_page_content(self):
@@ -56,16 +56,16 @@ class OrthodoxRussianLectionary:
             r.raise_for_status()
             return r.text
         except requests.exceptions.HTTPError as errh:
-            self.logger.error(f"HTTP Error: {errh}")
+            logger.error(f"HTTP Error: {errh}")
             return None
         except requests.exceptions.ConnectionError as errc:
-            self.logger.error(f"Error Connecting: {errc}")
+            logger.error(f"Error Connecting: {errc}")
             return None
         except requests.exceptions.Timeout as errt:
-            self.logger.error(f"Timeout Error: {errt}")
+            logger.error(f"Timeout Error: {errt}")
             return None
         except requests.exceptions.RequestException as err:
-            self.logger.error(f"Something Else: {err}")
+            logger.error(f"Something Else: {err}")
             return None
 
     def _scrape_page_content(self, page_content):
@@ -76,7 +76,7 @@ class OrthodoxRussianLectionary:
             self.readings = self._extract_readings(soup)
             self.troparion = self._extract_troparion(soup)
         except Exception as e:
-            self.logger.error(f"Failed to parse the webpage: {e}")
+            logger.error(f"Failed to parse the webpage: {e}")
 
     @staticmethod
     def _extract_title_and_subtitles(soup):
