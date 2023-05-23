@@ -1,5 +1,6 @@
 import logging
 import os
+import traceback
 
 import requests
 
@@ -21,6 +22,23 @@ def get_logger(name):
     logger.addHandler(c_handler)
 
     return logger
+
+
+class ContextFilter(logging.Filter):
+    """
+    This is a filter that injects stack info in the LogRecord.
+    """
+
+    def filter(self, record):
+        record.stack = traceback.format_stack()
+        return True
+
+
+log_filter = ContextFilter()
+
+# In your main function or wherever you setup your logging
+# Add the filter to root logger
+logging.getLogger().addFilter(log_filter)
 
 
 def log(message):

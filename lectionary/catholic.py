@@ -50,7 +50,7 @@ class CatholicPage:
             if r.status_code == 200:
                 return r
         except requests.exceptions.RequestException as e:
-            logger.error(f'Failed to make request: {e}')
+            logger.error(f'Failed to make request: {e}', exc_info=True)
             return None
 
     def parse_source_text(self, source_text):
