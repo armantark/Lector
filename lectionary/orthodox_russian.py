@@ -1,152 +1,153 @@
-from helpers import bible_url
-from helpers import date_expand
-
-from discord import Embed
-from bs4 import BeautifulSoup
+import datetime
+import logging
+import re
 
 import requests
-import re
-import datetime
+from bs4 import BeautifulSoup
+
+from helpers import bible_url
 
 
 class OrthodoxRussianLectionary:
-    '''
-    Class representing the data scraped from the Orthodox calendar provided by
-    Holy Trinity Russian Orthodox Church.
-    (https://www.holytrinityorthodox.com/calendar/)
-    '''
+    BASE_URL = 'https://holytrinityorthodox.com/calendar/calendar.php'
 
     def __init__(self):
+        self.url = None
+        self.today = None
+        self.ready = None
+        self.logger = logging.getLogger(__name__)
+        self._reset_attributes()
         self.regenerate()
-    
+
+    def _reset_attributes(self):
+        self.today = None
+        self.url = ''
+        self.title = ''
+        self.subtitles = []
+        self.saints = []
+        self.readings = []
+        self.troparion = {}
+        self.ready = False
 
     def clear(self):
-        self.today     = None
-        self.url       = ''
-        self.title     = ''
-        self.subtitles = []
-        self.saints    = []
-        self.readings  = []
-        self.troparion = []
-        self.ready     = False
-    
+        self._reset_attributes()
 
     def regenerate(self):
-        '''Function to scrape and store lectionary contents'''
         self.today = datetime.date.today()
-        self.url   = 'https://holytrinityorthodox.com/calendar/calendar.php'
-        self.url  += f'?month={self.today.month}&today={self.today.day}&year={self.today.year}'
-        self.url  += '&dt=1&header=1&lives=1&trp=2&scripture=2'
+        self.url = self._build_calendar_url()
 
+        page_content = self._fetch_page_content()
+        if page_content is not None:
+            self._scrape_page_content(page_content)
+            self.ready = True
+
+    def _build_calendar_url(self):
+        url = f'{self.BASE_URL}' \
+              f'?month={self.today.month}' \
+              f'&today={self.today.day}' \
+              f'&year={self.today.year}' \
+              f'&dt=1&header=1&lives=1&trp=2&scripture=2'
+        self.logger.debug(url)
+        return url
+
+    def _fetch_page_content(self):
         try:
             r = requests.get(self.url)
-            if r.status_code != 200:
-                self.clear_data()
-                return
-        except:
-            self.clear_data()
-            return
-        
-        soup = BeautifulSoup(r.text, 'html.parser')
+            r.raise_for_status()
+            return r.text
+        except requests.exceptions.HTTPError as errh:
+            self.logger.error(f"HTTP Error: {errh}")
+            return None
+        except requests.exceptions.ConnectionError as errc:
+            self.logger.error(f"Error Connecting: {errc}")
+            return None
+        except requests.exceptions.Timeout as errt:
+            self.logger.error(f"Timeout Error: {errt}")
+            return None
+        except requests.exceptions.RequestException as err:
+            self.logger.error(f"Something Else: {err}")
+            return None
 
-        # Title & Subtitles
-        self.title     = soup.select_one('span[class="dataheader"]').text
-        a              = soup.select_one('span[class="headerheader"]').text
-        b              = soup.select_one('span[class="headerheader"]>span').text
-        self.subtitles = [item for item in [a.replace(b,''), b.strip()] if item]
+    def _scrape_page_content(self, page_content):
+        try:
+            soup = BeautifulSoup(page_content, 'html.parser')
+            self.title, self.subtitles = self._extract_title_and_subtitles(soup)
+            self.saints = self._extract_saints(soup)
+            self.readings = self._extract_readings(soup)
+            self.troparion = self._extract_troparion(soup)
+        except Exception as e:
+            self.logger.error(f"Failed to parse the webpage: {e}")
 
-        # Saints
-        self.saints = [
+    @staticmethod
+    def _extract_title_and_subtitles(soup):
+        title = soup.select_one('span[class="dataheader"]').text
+        a = soup.select_one('span[class="headerheader"]').text
+        b = soup.select_one('span[class="headerheader"]>span').text
+        subtitles = [item for item in [a.replace(b, ''), b.strip()] if item]
+        return title, subtitles
+
+    @staticmethod
+    def _extract_saints(soup):
+        return [
             item
             for item in soup.select_one('span[class="normaltext"]').text.split('\n')
-            if item # Rid the list of empty strings
+            if item  # Rid the list of empty strings
         ]
 
-        # Readings
+    @staticmethod
+    def _extract_readings(soup):
         readings = soup.select_one('span[class="normaltext"]:nth-child(5)')
         readings = [str(item) for item in readings.contents]
-        readings = ''.join(readings)
-        readings = readings.replace('\n','').replace('<br/>', '\n')
-        if readings[-1] == '\n': readings = readings[:-1]
+        readings = ''.join(readings).replace('\n', '').replace('<br/>', '\n').strip()
+        readings = re.sub(r'<a.*>([^<>]*)</a>', r'<a>\1</a>', readings)  # Collapse the Bible links to what's necessary
+        readings = re.sub(r'<em>([^<>]*)</em>', r'*\1*', readings)  # Italicize lines that are wrapped in the <em> tag
+        if isinstance(readings, list):  # Check if readings is a list. If so, join it into a string.
+            readings = ' '.join(readings)
+        return readings
 
-        # Collapse the Bible links to what's neccesary
-        readings = re.sub(r'<a.*>([^<>]*)<\/a>', r'<a>\1</a>', readings)
-
-        # Italize lines that are wrapped in the <em> tag
-        readings = re.sub(r'<em>([^<>]*)<\/em>', r'*\1*', readings)
-        
-        self.readings = readings
-        
-        # Troparion
-        
-        # (keys represent saint/tone name)
-        keys   = [item.text for item in soup.select('p > b:first-child')]
+    @staticmethod
+    def _extract_troparion(soup):
+        keys = [item.text for item in soup.select('p > b:first-child')]
         values = [item.text for item in soup.select('span[class="normaltext"] > p')]
         values = [value.replace(key, '') for key, value in zip(keys, values)]
-
-        keys   = [key.replace('\n','').replace('\r','').replace(' —','') for key in keys]
-        values = [value.replace('\n','').replace('\r','') for value in values]
-
-        self.troparion = {}
-        for key, value in zip(keys, values):
-            self.troparion[key] = value
-        
-        self.ready = True
-    
+        keys = [key.replace('\n', '').replace('\r', '').replace(' —', '') for key in keys]
+        values = [value.replace('\n', '').replace('\r', '') for value in values]
+        return dict(zip(keys, values))
 
     def build_json(self):
-        '''
-        Public function to construct json representing
-        the calendar entry.
+        if not self.ready:
+            return []
 
-        If the data isn't ready, an empty list is returned.
-        '''
-        if not self.ready: return []
+        return [
+            self._build_main_embed(),
+            self._build_saints_embed(),
+            self._build_readings_embed(),
+            self._build_troparion_embed(),
+        ]
 
-        embeds = []
+    def _build_main_embed(self):
+        return {
+            'title': self.title,
+            'description': '\n'.join(self.subtitles),
+            'author': {'name': 'Russian Orthodox Lectionary', 'url': self.url},
+        }
 
-        # Title & Subtitles
-        embeds.append(
-            {
-                'title':self.title,
-                'description':'\n'.join(self.subtitles),
-                'author':{
-                    'name':'Russian Orthodox Lectionary',
-                    'url':self.url
-                }
-            }
-        )
+    def _build_saints_embed(self):
+        return {
+            'title': 'Saints & Feasts',
+            'description': '\n'.join(self.saints),
+        }
 
-        # Saints & Feasts
-        embeds.append(
-            {
-                'title':'Saints & Feasts',
-                'description':'\n'.join(self.saints)
-            }
-        )
-        
-        # Readings
-        embeds.append(
-            {
-                'title':'The Scripture Readings',
-                'description':bible_url.html_convert(self.readings)
-            }
-        )
+    def _build_readings_embed(self):
+        return {
+            'title': 'The Scripture Readings',
+            'description': bible_url.html_convert(self.readings),
+        }
 
-        # Troparion
-        embeds.append(
-            {
-                'title':'Troparion',
-                'footer':{'text':'© Holy Trinity Russian Orthodox Church'},
-                'fields':[
-                    {
-                        'name':saint,
-                        'value':self.troparion[saint],
-                        'inline':False
-                    }
-                    for saint in self.troparion
-                ]
-            }
-        )
-
-        return embeds
+    def _build_troparion_embed(self):
+        return {
+            'title': 'Troparion',
+            'footer': {'text': '© Holy Trinity Russian Orthodox Church'},
+            'fields': [{'name': saint, 'value': troparion, 'inline': False} for saint, troparion in
+                       self.troparion.items()],
+        }
