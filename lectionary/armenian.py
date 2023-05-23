@@ -1,148 +1,125 @@
-from helpers import bible_url
-from helpers import date_expand
-
-from discord import Embed
-
-from bs4 import BeautifulSoup
-
-import requests
 import datetime
+import requests
+from bs4 import BeautifulSoup
+from helpers import bible_url, date_expand
+
 
 class ArmenianLectionary:
-    def __init__(self): self.regenerate()
-    
+    SUBSTITUTIONS = {
+        'III ': '3 ',
+        'II ': '2 ',
+        'I ': '1 ',
+        'Azariah': 'Prayer of Azariah'
+    }
+
+    def __init__(self):
+        self.notes_url = None
+        self.subtitle = None
+        self.today = None
+        self.url = ''
+        self.title = ''
+        self.description = ''
+        self.readings = []
+        self.synaxarium = ''
+        self.ready = False
+        self.regenerate()
 
     def clear(self):
-        self.today       = None
-        self.url         = ''
-        self.title       = ''
+        self.today = None
+        self.url = ''
+        self.title = ''
         self.description = ''
-        self.readings    = []
-
-        self.synaxarium  = '' # Url
-
-        self.ready       = False
-
+        self.readings = []
+        self.synaxarium = ''
+        self.ready = False
 
     def get_synaxarium(self):
-        '''
+        """
         Get the daily synaxarium (and implicit color)
-        '''
-        url = self.today.strftime(f'https://www.qahana.am/en/holidays/%Y-%m-%d/1')
+        """
+        url = self.today.strftime('https://www.qahana.am/en/holidays/%Y-%m-%d/1')
 
         try:
             r = requests.get(url, headers={'User-Agent': ''})
-            if r.status_code != 200:
-                return ''
-        except:
+            r.raise_for_status()
+        except requests.exceptions.RequestException:
             return ''
-        
+
         soup = BeautifulSoup(r.text, 'html.parser')
 
-        if soup.select_one('div[class^="holidayItem"]>h2'):
-            return url
-        else:
-            return ''
-
+        return url if soup.select_one('div[class^="holidayItem"]>h2') else ''
 
     def regenerate(self):
         self.today = datetime.date.today()
-        # self.url   = self.today.strftime(f'https://armenianscripture.wordpress.com/%Y/%m/%d/%B-{self.today.day}-%Y')
-        self.url   = self.today.strftime(f'https://vemkar.us/lectionary/October-18-2022')
-        # print(self.url)
+        self.url = self.today.strftime('https://armenianscripture.wordpress.com/%Y/%m/%d/%B-%d-%Y/')
+
         try:
             r = requests.get(self.url)
-            if r.status_code != 200:
-                self.clear()
-                print('Failed to get URL for vemkar.us')
-                return
-        except:
+            r.raise_for_status()
+        except requests.exceptions.RequestException as e:
             self.clear()
-            print('Request failed.')
+            print(f'Request failed due to {str(e)}')
             return
-        
+
         soup = BeautifulSoup(r.text, 'html.parser')
 
-        self.title    = soup.select('h2')[1].text
-        self.subtitle = date_expand.auto_expand(self.today, self.title)
-        readings = ""
-
-        readings_raw_select = soup.select('h4[style]')
-
-        for reading in readings_raw_select:
-            curr = reading.text
-            if curr[-1].isdigit():
-                curr = curr + '\n'
-            readings += curr
-
-        substitutions = {'III ':'3 ','II ':'2 ','I ':'1 ','Azariah':'Prayer of Azariah'}
-        for original in substitutions.keys():
-            readings = readings.replace(original, substitutions[original])
-        
-        if readings == '[No readings for this day]':
-            self.readings = [readings]
+        h2_elements = soup.select('h2')
+        if len(h2_elements) > 0:
+            self.title = h2_elements[0].text
+            self.subtitle = date_expand.auto_expand(self.today, self.title)
+            readings = self._parse_readings(soup)
+            self.readings = readings.split('\n') if readings != '[No readings for this day]' else [readings]
         else:
-            self.readings = readings.split('\n')
+            self.title = ''
+            self.subtitle = ''
+            self.readings = []
 
-        # Get pages with additional lectionary notes, if they exist
-        # try:
-        #     r = requests.get(self.today.strftime(f'https://vemkar.us/%B-{self.today.day}-%Y'))
-        #     if r.status_code != 200:
-        #         self.clear()
-        #         return
-        # except:
-        #     self.clear()
-        #     return
-        
-        # If there was no redirect, this is a unique resource
-        if (len(r.history) == 0):
-            soup = BeautifulSoup(r.text, 'html.parser')
-            self.notes_url = soup.select_one("p[class='attachment']>a")['href']
-        # If there was a redirect, everything was already scraped
-        else:
-            self.notes_url = ''
-
-        # self.synaxarium = self.get_synaxarium()
-
+        self.notes_url = self._get_notes_url(r, soup)
         self.ready = True
 
+    def _parse_readings(self, soup):
+        readings_raw_select = soup.select('h4[style]')
+        readings = "".join(
+            reading.text + '\n' if reading.text[-1].isdigit() else reading.text
+            for reading in readings_raw_select
+        )
+
+        for original, substitute in self.SUBSTITUTIONS.items():
+            readings = readings.replace(original, substitute)
+
+        return readings
+
+    @staticmethod
+    def _get_notes_url(r, soup):
+        if len(r.history) == 0:
+            attachment_link = soup.select_one("p[class='attachment']>a")
+            return attachment_link['href'] if attachment_link else ''
+        else:
+            return ''
 
     def build_json(self):
-        if not self.ready: return []
+        if not self.ready:
+            return []
 
         return [
             {
-                'title':self.title + '\n' + self.subtitle,
-                'color':(
-                    0xca0000
-                    if self.synaxarium != ''
-                    else 0x202225
-                ),
-                'description':(
-                    (
-                        f'[Synaxarium]({self.synaxarium})\n\n'
-                        if self.synaxarium != ''
-                        else ''
-                    ) +
-                    '\n'.join(
-                        [
-                            (
-                                bible_url.convert(reading)
-                                if reading != '[No readings for this day]'
-                                else reading
-                            )
-                            for reading in self.readings
-                        ]
-                    ) + (
-                        f"\n\n*[Notes]({self.notes_url})"
-                        if self.notes_url
-                        else ''
-                    )
-                ),
-                'footer':{'text':'Copyright © VEMKAR.'},
-                'author':{
-                    'name':'Armenian Lectionary',
-                    'url':self.url
+                'title': self.title + '\n' + self.subtitle,
+                'color': 0xca0000 if self.synaxarium else 0x202225,
+                'description': self._build_description(),
+                'footer': {'text': 'Copyright © VEMKAR.'},
+                'author': {
+                    'name': 'Armenian Lectionary',
+                    'url': self.url
                 }
             }
         ]
+
+    def _build_description(self):
+        synaxarium = f'[Synaxarium]({self.synaxarium})\n\n' if self.synaxarium else ''
+        readings = '\n'.join(
+            bible_url.convert(reading) if reading != '[No readings for this day]' else reading
+            for reading in self.readings
+        )
+        notes = f"\n\n*[Notes]({self.notes_url})" if self.notes_url else ''
+
+        return synaxarium + readings + notes
