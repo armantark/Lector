@@ -7,8 +7,8 @@ def load_json(file_path):
         return json.load(f)
 
 
-REPLACEMENTS = load_json('replacements.json')
-ABBREVIATIONS = load_json('abbreviations.json')
+REPLACEMENTS = load_json('helpers/replacements.json')
+ABBREVIATIONS = load_json('helpers/abbreviations.json')
 
 
 def convert(reference):
