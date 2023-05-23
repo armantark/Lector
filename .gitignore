@@ -5,6 +5,7 @@ venv
 # Private data 
 config.json
 data.db
+.env
 
 # Testing modules
 tester.py
