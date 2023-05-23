@@ -33,7 +33,7 @@ def convert(reference):
     # Clean up references that have alternative chapter numbers within
     # brackets so the links don't break
     # Ex: '4[2] Kings 2:6-14' => '2 Kings 2:6-14'
-    reference = re.sub(r'([0-9]+\[([0-9]+)\])', r'\2', reference)
+    reference = re.sub(r'([0-9]+\[([0-9]+)])', r'\2', reference)
 
     # Get rid of letter subreferences in verses
     pattern = re.compile(r'([0-9]+)([a-zA-Z]+)')
@@ -57,7 +57,7 @@ def html_convert(text):
     In: "God creates everything\nin <a>Genesis 1:1</a>"
     Out: "God creates everything\nin [Genesis 1:1](https://www.example.com)"
     """
-    for match in re.findall(r'(<a>([^<>]*)<\/a>)', text):
+    for match in re.findall(r'(<a>([^<>]*))', text):
         text = text.replace(match[0], convert(match[1]))
 
     return text
