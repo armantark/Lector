@@ -1,59 +1,31 @@
 import datetime
 import re
 
-import requests
-from bs4 import BeautifulSoup
-
 from helpers import bible_url, date_expand
+from lectionary.lectionary import Lectionary
 
 
-class OrthodoxAmericanLectionary:
+class OrthodoxAmericanLectionary(Lectionary):
     def __init__(self):
-        self.today = None
-        self.url = None
-        self.title = None
-        self.saints_feasts = None
-        self.readings = None
-        self.ready = None
-        self.clear()
+        super().__init__()
         self.regenerate()
-
-    def clear(self):
-        self.today = None
-        self.url = ''
-        self.title = ''
-        self.saints_feasts = []
-        self.readings = []
-        self.ready = False
 
     def regenerate(self):
         self.today = datetime.date.today()
         self.url = self.today.strftime('https://www.oca.org/readings/daily/%Y/%m/%d')
-        self.title = date_expand.expand(self.today)
+        self.extract_title(None)
 
         soup = self.fetch_and_parse_html(self.url)
         if not soup:
             return
 
-        self.extract_saints_feasts(soup)
+        self.extract_synaxarium(soup)
         self.extract_readings(soup)
 
         self.ready = True
 
-    def fetch_and_parse_html(self, url):
-        try:
-            r = requests.get(url)
-            if r.status_code != 200:
-                self.clear()
-                return None
-        except requests.RequestException:
-            self.clear()
-            return None
-
-        return BeautifulSoup(r.text, 'html.parser')
-
-    def extract_saints_feasts(self, soup):
-        self.saints_feasts = re.split(
+    def extract_synaxarium(self, soup):
+        self.synaxarium = re.split(
             r'(?<!B\.C\.)(?<! c\.)(?<!Blv\.)(?<!Mt\.)(?<!Rt\.)(?<!St\.)(?<!Ven\.)(?<!ca\.)(?<=\.)\s+',
             soup.select_one('section>p').text.replace('&ldquo;', '"').replace('&rdquo;', '"'))
 
@@ -69,7 +41,6 @@ class OrthodoxAmericanLectionary:
                 return
 
             reading = soup.select_one('article>h2').text.strip().replace('\t', '').replace('  ', ' ')
-
             reading = pattern.sub(r'\g<composite><a>\g<verses></a> (\g<header>\g<tail>)', reading)
 
             match = pattern.match(reading)
@@ -86,6 +57,13 @@ class OrthodoxAmericanLectionary:
                 readings.append([header, [reading]])
 
         self.readings = readings
+
+    def extract_title(self, soup):
+        self.title = date_expand.expand(self.today)
+
+    def extract_subtitle(self, soup):
+        # Not required in this class as no subtitle is extracted
+        pass
 
     def build_json(self):
         if not self.ready:
@@ -114,7 +92,7 @@ class OrthodoxAmericanLectionary:
     def build_description(self):
         return (
                 self.today.strftime('[**Saints & Feasts**](https://www.oca.org/saints/all-lives/%Y/%m/%d)\n')
-                + "\n".join(self.saints_feasts)
+                + "\n".join(self.synaxarium)
                 + self.today.strftime(
             '\n[**Troparia and Kontakia**](https://www.oca.org/saints/troparia/%Y/%m/%d)')
                 + '\n\n**The Scripture Readings**'

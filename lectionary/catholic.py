@@ -184,6 +184,7 @@ class CatholicPage:
         return reference.title()
 
 
+# doesn't implement lectionary.py since it's too unique
 class CatholicLectionary:
     def __init__(self):
         self.today = datetime.date.today()

@@ -1,14 +1,16 @@
-import datetime
-
 import requests
 from bs4 import BeautifulSoup, NavigableString
 
 from helpers import bible_url, date_expand, logger
+from lectionary.lectionary import Lectionary
 
 logger = logger.get_logger(__name__)
 
 
-class ArmenianLectionary:
+class ArmenianLectionary(Lectionary):
+    def extract_synaxarium(self, soup):
+        pass
+
     SUBSTITUTIONS = {
         'III ': '3 ',
         'II ': '2 ',
@@ -17,25 +19,52 @@ class ArmenianLectionary:
     }
 
     def __init__(self):
+        super().__init__()
         self.notes_url = None
-        self.subtitle = None
-        self.today = None
-        self.url = ''
-        self.title = ''
         self.description = ''
-        self.readings = []
         self.synaxarium = ''
-        self.ready = False
         self.regenerate()
 
     def clear(self):
-        self.today = None
-        self.url = ''
-        self.title = ''
+        super().clear()
+        self.notes_url = None
         self.description = ''
-        self.readings = []
         self.synaxarium = ''
-        self.ready = False
+
+    def regenerate(self):
+        self.url = self.today.strftime('https://armenianscripture.wordpress.com/%Y/%m/%d/%B-%d-%Y/')
+        soup = self.fetch_and_parse_html(self.url)
+        if soup is not None:
+            self.title = self.extract_title(soup)
+            self.subtitle = self.extract_subtitle(soup)
+            self.readings = self.extract_readings(soup)
+            self.synaxarium = self.get_synaxarium()
+            self.ready = True
+
+    def extract_title(self, soup):
+        h3_elements = soup.select('h3')
+        return h3_elements[0].text if len(h3_elements) > 0 else ''
+
+    def extract_subtitle(self, soup):
+        return date_expand.auto_expand(self.today, self.title)
+
+    def extract_readings(self, soup):
+        readings_raw_select = soup.select('h3')[1]
+        readings = '\n'.join(
+            str(content).strip() for content in readings_raw_select.contents if isinstance(content, NavigableString))
+
+        for original, substitute in self.SUBSTITUTIONS.items():
+            readings = readings.replace(original, substitute)
+
+        return readings.split('\n') if readings != '[No readings for this day]' else [readings]
+
+    @staticmethod
+    def _get_notes_url(r, soup):
+        if len(r.history) == 0:
+            attachment_link = soup.select_one("p[class='attachment']>a")
+            return attachment_link['href'] if attachment_link else ''
+        else:
+            return ''
 
     def get_synaxarium(self):
         """
@@ -55,55 +84,6 @@ class ArmenianLectionary:
         event_link_element = soup.select_one('h3[class^="tribe-events-list-event-title summary"]>a')
         # Return the link if it exists, else return an empty string
         return url if event_link_element else ''
-
-    def regenerate(self):
-        self.today = datetime.date.today()
-        self.url = self.today.strftime('https://armenianscripture.wordpress.com/%Y/%m/%d/%B-%d-%Y/')
-
-        try:
-            r = requests.get(self.url)
-            r.raise_for_status()
-        except requests.exceptions.RequestException as e:
-            self.clear()
-            logger.error(f'Request failed: {e}', exc_info=True)
-            return
-
-        soup = BeautifulSoup(r.text, 'html.parser')
-
-        h3_elements = soup.select('h3')
-        if len(h3_elements) > 0:
-            self.title = h3_elements[0].text
-            self.subtitle = date_expand.auto_expand(self.today, self.title)
-            readings = self._parse_readings(soup)
-            self.readings = readings.split('\n') if readings != '[No readings for this day]' else [readings]
-        else:
-            self.title = ''
-            self.subtitle = ''
-            self.readings = []
-
-        self.notes_url = self._get_notes_url(r, soup)
-
-        self.synaxarium = self.get_synaxarium()
-
-        self.ready = True
-
-    def _parse_readings(self, soup):
-        readings_raw_select = soup.select('h3')[1]
-        readings = '\n'.join(
-            str(content).strip() for content in readings_raw_select.contents if isinstance(content, NavigableString))
-
-        for original, substitute in self.SUBSTITUTIONS.items():
-            readings = readings.replace(original, substitute)
-
-        return readings
-
-    @staticmethod
-    def _get_notes_url(r, soup):
-        if len(r.history) == 0:
-            attachment_link = soup.select_one("p[class='attachment']>a")
-            return attachment_link['href'] if attachment_link else ''
-        else:
-            return ''
 
     def build_json(self):
         if not self.ready:

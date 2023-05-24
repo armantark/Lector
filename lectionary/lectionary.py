@@ -47,6 +47,10 @@ class Lectionary(ABC):
         return BeautifulSoup(r.text, 'html.parser')
 
     @abstractmethod
+    def extract_title(self, soup):
+        pass
+
+    @abstractmethod
     def extract_subtitle(self, soup):
         pass
 
