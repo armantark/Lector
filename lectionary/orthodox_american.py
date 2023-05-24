@@ -11,6 +11,7 @@ class OrthodoxAmericanLectionary(Lectionary):
         self.regenerate()
 
     def regenerate(self):
+        super().regenerate()
         self.today = datetime.date.today()
         self.url = self.today.strftime('https://www.oca.org/readings/daily/%Y/%m/%d')
         self.extract_title(None)

@@ -32,6 +32,7 @@ class ArmenianLectionary(Lectionary):
         self.synaxarium = ''
 
     def regenerate(self):
+        super().regenerate()  # Update last_regeneration timestamp
         self.url = self.today.strftime('https://armenianscripture.wordpress.com/%Y/%m/%d/%B-%d-%Y/')
         soup = self.fetch_and_parse_html(self.url)
         if soup is not None:

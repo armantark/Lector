@@ -10,6 +10,7 @@ from helpers import date_expand
 
 class RevisedCommonLectionary:
     def __init__(self):
+        self.last_regeneration = datetime.datetime.min
         self.url = 'https://lectionary.library.vanderbilt.edu/daily.php'
         self.today = datetime.date.today()
         self.title = f'Daily Readings for {date_expand.expand(self.today)}'
@@ -46,6 +47,7 @@ class RevisedCommonLectionary:
             for item in text.split('; ')]
 
     def regenerate(self):
+        self.last_regeneration = datetime.datetime.now()
         soup = self.fetch_and_parse_html()
         if soup is None:
             return

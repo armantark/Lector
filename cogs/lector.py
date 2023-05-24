@@ -172,7 +172,9 @@ class Lectionary(commands.Cog):
         return ' '.join(lec).lower()
 
     def _get_or_regenerate_lectionary(self, index):
-        if not self.lectionaries[index].ready:
+        if not self.lectionaries[index].ready or (
+                datetime.datetime.now() - self.lectionaries[index].last_regeneration
+        ) > datetime.timedelta(hours=12):
             self.lectionaries[index].regenerate()
             if not self.lectionaries[index].ready:
                 print('Lectionary not regenerated correctly.')

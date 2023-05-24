@@ -20,7 +20,7 @@ class Lectionary(ABC):
         self.readings = []
         self.synaxarium = []
         self.ready = False
-        # self.last_regeneration = datetime.
+        self.last_regeneration = datetime.datetime.min
 
     def clear(self):
         self.today = None
@@ -33,6 +33,7 @@ class Lectionary(ABC):
 
     @abstractmethod
     def regenerate(self):
+        self.last_regeneration = datetime.datetime.now()
         pass
 
     def fetch_and_parse_html(self, url):

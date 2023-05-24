@@ -48,6 +48,7 @@ class OrthodoxCopticLectionary(Lectionary):
         return string
 
     def regenerate(self):
+        super().regenerate()
         self.today = datetime.date.today()
         self.url = self.today.strftime('https://copticchurch.net/readings??g_year=%Y&g_month=%m&g_day=%d')
 

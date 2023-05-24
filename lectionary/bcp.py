@@ -14,6 +14,7 @@ class BookOfCommonPrayer(Lectionary):
         self.regenerate()
 
     def regenerate(self):
+        super().regenerate()  # Update last_regeneration timestamp
         self.url = self.today.strftime('https://www.biblegateway.com/reading-plans/bcp-daily-office/%Y/%m/%d')
         soup = self.fetch_and_parse_html(self.url)
         if soup is not None:
