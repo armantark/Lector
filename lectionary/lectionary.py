@@ -20,6 +20,7 @@ class Lectionary(ABC):
         self.readings = []
         self.synaxarium = []
         self.ready = False
+        # self.last_regeneration = datetime.
 
     def clear(self):
         self.today = None

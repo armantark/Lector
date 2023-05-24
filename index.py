@@ -1,8 +1,8 @@
+import asyncio
 import logging
 import os
 import sys
 import traceback
-import asyncio
 
 import discord
 from discord import app_commands
@@ -22,6 +22,8 @@ tree = app_commands.CommandTree(client)
 bot = commands.Bot(command_prefix=config.prefix, intents=intents)
 bot.remove_command('help')
 
+
+# todo: Please add essential comments and docstrings to this code, nothing overexplaining code that is self-documenting.
 
 async def main():
     for file in os.listdir('cogs'):
