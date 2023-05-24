@@ -27,6 +27,7 @@ class OrthodoxRussianLectionary(Lectionary):
         self.subtitles = None
 
     def regenerate(self):
+        super().regenerate()
         self.today = datetime.date.today()
         self.url = self._build_calendar_url()
 

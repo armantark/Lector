@@ -187,6 +187,7 @@ class CatholicPage:
 # doesn't implement lectionary.py since it's too unique
 class CatholicLectionary:
     def __init__(self):
+        self.last_regeneration = datetime.datetime.min
         self.today = datetime.date.today()
         self.permalink = self.today.strftime('https://bible.usccb.org/bible/readings/%m%d%y.cfm')
         self.pages = []
@@ -222,6 +223,7 @@ class CatholicLectionary:
             return color_mappings['green']
 
     def regenerate(self):
+        self.last_regeneration = datetime.datetime.now()  # Update last_regeneration timestamp
         self.today = datetime.date.today()
         self.permalink = self.today.strftime('https://bible.usccb.org/bible/readings/%m%d%y.cfm')
         self.pages = []

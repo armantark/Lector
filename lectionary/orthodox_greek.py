@@ -35,6 +35,7 @@ class OrthodoxGreekLectionary(Lectionary):
 
     def regenerate(self):
         try:
+            super().regenerate()
             self.url = self.today.strftime('https://www.goarch.org/chapel?date=%m/%d/%Y')
             self.title = self.extract_title(None)
             soup = self.fetch_and_parse_html(self.url)
