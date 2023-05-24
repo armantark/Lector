@@ -4,17 +4,10 @@ import re
 import requests
 from bs4 import BeautifulSoup
 
-from helpers import bible_url
-from helpers import date_expand
+from helpers import bible_url, date_expand
 
 
 class OrthodoxAmericanLectionary:
-    """
-    Class representing the data scraped from the Orthodox calendar provided by
-    the Orthodox Church in America.
-    (https://www.oca.org/readings/daily)
-    """
-
     def __init__(self):
         self.today = None
         self.url = None
@@ -22,12 +15,7 @@ class OrthodoxAmericanLectionary:
         self.saints_feasts = None
         self.readings = None
         self.ready = None
-        self.today = None
-        self.url = None
-        self.title = None
-        self.saints_feasts = None
-        self.readings = None
-        self.ready = None
+        self.clear()
         self.regenerate()
 
     def clear(self):
@@ -43,46 +31,50 @@ class OrthodoxAmericanLectionary:
         self.url = self.today.strftime('https://www.oca.org/readings/daily/%Y/%m/%d')
         self.title = date_expand.expand(self.today)
 
+        soup = self.fetch_and_parse_html(self.url)
+        if not soup:
+            return
+
+        self.extract_saints_feasts(soup)
+        self.extract_readings(soup)
+
+        self.ready = True
+
+    def fetch_and_parse_html(self, url):
         try:
-            r = requests.get(self.url)
+            r = requests.get(url)
             if r.status_code != 200:
                 self.clear()
                 return None
         except requests.RequestException:
             self.clear()
-            return
-        soup = BeautifulSoup(r.text, 'html.parser')
+            return None
 
-        # Saints & Feasts
-        self.saints_feasts = re.split(  # Horrific regex for correct linebreaking
+        return BeautifulSoup(r.text, 'html.parser')
+
+    def extract_saints_feasts(self, soup):
+        self.saints_feasts = re.split(
             r'(?<!B\.C\.)(?<! c\.)(?<!Blv\.)(?<!Mt\.)(?<!Rt\.)(?<!St\.)(?<!Ven\.)(?<!ca\.)(?<=\.)\s+',
             soup.select_one('section>p').text.replace('&ldquo;', '"').replace('&rdquo;', '"'))
 
-        # Readings
+    def extract_readings(self, soup):
         pattern = re.compile(
             r'(?P<composite>Composite [0-9]+ - )?(?P<verses>.*) '
             r'(\((?P<header>[^,\n]+)(?P<tail>, (?P<second>.*))?\))')
 
         readings = []
         for tag in soup.select('section>ul>li>a'):
-            try:
-                r = requests.get(f'https://www.oca.org{tag["href"]}')
-                if r.status_code != 200:
-                    self.clear()
-                    return
-            except:
-                self.clear()
+            soup = self.fetch_and_parse_html(f'https://www.oca.org{tag["href"]}')
+            if not soup:
                 return
 
-            soup = BeautifulSoup(r.text, 'html.parser')
             reading = soup.select_one('article>h2').text.strip().replace('\t', '').replace('  ', ' ')
 
-            # Regex to wrap the Bible reference with HTML anchors correctly
             reading = pattern.sub(r'\g<composite><a>\g<verses></a> (\g<header>\g<tail>)', reading)
 
             match = pattern.match(reading)
-            header = match.group('header')  # Required
-            second = match.group('second')  # Optional
+            header = match.group('header')
+            second = match.group('second')
 
             reading = pattern.sub(r'\g<composite>\g<verses>', reading)
             if second and ('reading' not in second):
@@ -91,35 +83,18 @@ class OrthodoxAmericanLectionary:
             if readings and readings[-1][0] == header:
                 readings[-1][1].append(reading)
             else:
-                readings.append([
-                    header,
-                    [reading]
-                ])
+                readings.append([header, [reading]])
 
         self.readings = readings
 
-        self.ready = True
-
     def build_json(self):
-        """
-        Helper method to construct a list of Discord Embed json representing
-        the calendar data.
-        """
         if not self.ready:
             return []
 
         return [
             {
                 'title': self.title,
-                # Would have used an f-string for the description,
-                # but f-string expressions cannot include backslashes
-                'description': (
-                        self.today.strftime('[**Saints & Feasts**](https://www.oca.org/saints/all-lives/%Y/%m/%d)\n')
-                        + "\n".join(self.saints_feasts)
-                        + self.today.strftime(
-                    '\n[**Troparia and Kontakia**](https://www.oca.org/saints/troparia/%Y/%m/%d)')
-                        + '\n\n**The Scripture Readings**'
-                ),
+                'description': self.build_description(),
                 'footer': {'text': 'Copyright © Orthodox Church in America.'},
                 'author': {
                     'name': 'American Orthodox Lectionary',
@@ -135,3 +110,12 @@ class OrthodoxAmericanLectionary:
                 ]
             }
         ]
+
+    def build_description(self):
+        return (
+                self.today.strftime('[**Saints & Feasts**](https://www.oca.org/saints/all-lives/%Y/%m/%d)\n')
+                + "\n".join(self.saints_feasts)
+                + self.today.strftime(
+            '\n[**Troparia and Kontakia**](https://www.oca.org/saints/troparia/%Y/%m/%d)')
+                + '\n\n**The Scripture Readings**'
+        )
