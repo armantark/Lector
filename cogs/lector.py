@@ -21,7 +21,7 @@ logger = logger.get_logger(__name__)
 
 class Lectionary(commands.Cog):
     MAX_SUBSCRIPTIONS = 10
-    EARLIEST_TIME = 7
+    EARLIEST_TIME = 0
     LATEST_TIME = 23
 
     def __init__(self, bot):
@@ -213,7 +213,7 @@ class Lectionary(commands.Cog):
 
     def _parse_time(self, time):
         # If the user specified an integer, it's possibly 24-hour time
-        if time in re.findall(r'[0-9]+', time):
+        if time.isdigit():
             time = int(time)
         # If a meridiem was possibly specified
         else:
