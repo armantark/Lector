@@ -1,48 +1,34 @@
-import datetime
-
-import requests
-from bs4 import BeautifulSoup
-
 from helpers import bible_url, date_expand
+from .lectionary import Lectionary
 
 
-class BookOfCommonPrayer:
+class BookOfCommonPrayer(Lectionary):
+    def extract_subtitle(self, soup):
+        pass
+
+    def extract_synaxarium(self, soup):
+        pass
+
     def __init__(self):
-        self.ready = None
-        self._reset()
+        super().__init__()
+        self.regenerate()
 
-    def _reset(self):
-        self.ready = False
-        self._today = datetime.date.today()
-        self._url = self._today.strftime('https://www.biblegateway.com/reading-plans/bcp-daily-office/%Y/%m/%d')
-        self._title = ''
-        self._readings = []
+    def regenerate(self):
+        self.url = self.today.strftime('https://www.biblegateway.com/reading-plans/bcp-daily-office/%Y/%m/%d')
+        soup = self.fetch_and_parse_html(self.url)
+        if soup is not None:
+            self.title = self.extract_title(soup)
+            self.readings = self.extract_readings(soup)
+            self.ready = True
 
-    def _fetch_content(self):
-        try:
-            response = requests.get(self._url)
-            if response.status_code != 200:
-                return None
-            return BeautifulSoup(response.text, 'html.parser')
-        except requests.RequestException:
-            return None
+    def extract_title(self, soup):
+        return f'Daily Readings for {date_expand.expand(self.today)}'
 
-    def _extract_information(self, soup):
-        self._title = f'Daily Readings for {date_expand.expand(self._today)}'
-        self._readings = [
+    def extract_readings(self, soup):
+        return [
             reading.text
             for reading in soup.select("[class='rp-passage-display']")
         ]
-
-    def regenerate(self):
-        self._reset()
-        soup = self._fetch_content()
-
-        if soup is None:
-            return
-
-        self._extract_information(soup)
-        self.ready = True
 
     def build_json(self):
         """
@@ -52,11 +38,11 @@ class BookOfCommonPrayer:
             return []
 
         return [{
-            'title': self._title,
-            'description': '\n'.join(bible_url.convert(reading) for reading in self._readings),
+            'title': self.title,
+            'description': '\n'.join(bible_url.convert(reading) for reading in self.readings),
             'footer': {'text': 'Copyright © BibleGateway.'},
             'author': {
                 'name': 'The Book of Common Prayer',
-                'url': self._url
+                'url': self.url
             }
         }]
