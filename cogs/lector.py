@@ -113,10 +113,10 @@ class Lectionary(commands.Cog):
             'armenian': 0, 'a': 0,
             'book of common prayer': 1, 'bcp': 1, 'b': 1,
             'catholic': 2, 'c': 2,
-            'american orthodox': 3, 'orthodox american': 3, 'ao': 3, 'oa': 3,
+            'american orthodox': 3, 'ao': 3, "oca": 3,
             'coptic orthodox': 4, 'co': 4,
-            'greek orthodox': 5, 'orthodox greek': 5, 'go': 5, 'og': 5,
-            'russian orthodox': 6, 'orthodox russian': 6, 'ro': 6, 'or': 6,
+            'greek orthodox': 5, 'go': 5,
+            'russian orthodox': 6, 'ro': 6,
             'revised common': 7, 'rcl': 7, 'r': 7
         }
 
@@ -131,7 +131,16 @@ class Lectionary(commands.Cog):
     async def lectionary(self, ctx, *lec):
         lec = self._validate_lectionary_input(lec)
         if lec is None:
-            await ctx.send('You didn\'t specify a lectionary.')
+            await ctx.send('You didn\'t specify a lectionary.\n\nCurrent options are:\n'
+                           '\"Armenian\" (shortcut `a`)\n'
+                           '\"Book of Common Prayer\" (shortcut `bcp` or `b`)\n'
+                           '\"Catholic\" (shortcut `c`)\n'
+                           '\"American Orthodox\" (shortcut `ao` or `oca`)\n'
+                           '\"Coptic Orthodox\" (shortcut `co`)\n'
+                           '\"Greek Orthodox\" (shortcut `go`)\n'
+                           '\"Russian Orthodox\" (shortcut `ro`)\n'
+                           '\"Revised Common\" (shortcut `rcl` or `r`)\n'
+                           )
             return
 
         index = self._index_lectionary_name(lec)
@@ -140,12 +149,21 @@ class Lectionary(commands.Cog):
             lectionary = self._get_or_regenerate_lectionary(index)
             if lectionary is None:
                 await ctx.message.add_reaction('❌')
-                ctx.send("Lectionary failed. Please report to the bot owner (@Tarkavor) for assistance.")
+                await ctx.send("Lectionary failed. Please report to the bot owner (@Tarkavor) for assistance.")
                 return
 
             await self.send_lectionary(ctx, lectionary)
         else:
-            await ctx.send('You didn\'t specify a valid lectionary.')
+            await ctx.send('You didn\'t specify a valid lectionary.\n\nCurrent options are:\n'
+                           '\"Armenian\" (shortcut `a`)\n'
+                           '\"Book of Common Prayer\" (shortcut `bcp` or `b`)\n'
+                           '\"Catholic\" (shortcut `c`)\n'
+                           '\"American Orthodox\" (shortcut `ao` or `oca`)\n'
+                           '\"Coptic Orthodox\" (shortcut `co`)\n'
+                           '\"Greek Orthodox\" (shortcut `go`)\n'
+                           '\"Russian Orthodox\" (shortcut `ro`)\n'
+                           '\"Revised Common\" (shortcut `rcl` or `r`)\n'
+                           )
 
     @staticmethod
     def _validate_lectionary_input(lec):
