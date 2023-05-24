@@ -221,7 +221,8 @@ class Lectionary(commands.Cog):
             match = re.search(r'([0-9]+) *(am|pm)', time)
             if match:
                 time = int(match.group(1))
-                if match.group(2) == 'pm': time += 12
+                if match.group(2) == 'pm':
+                    time += 12
             else:
                 return None
 
