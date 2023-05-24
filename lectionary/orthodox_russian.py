@@ -1,45 +1,46 @@
 import datetime
 import re
 
-import requests
-from bs4 import BeautifulSoup
-
 from helpers import bible_url, logger
+from lectionary.lectionary import Lectionary
 
 logger = logger.get_logger(__name__)
 
 
-class OrthodoxRussianLectionary:
+class OrthodoxRussianLectionary(Lectionary):
+    def extract_synaxarium(self, soup):
+        pass
+
     BASE_URL = 'https://holytrinityorthodox.com/calendar/calendar.php'
 
     def __init__(self):
-        self.url = None
-        self.today = None
-        self.ready = None
-        self._reset_attributes()
+        super().__init__()
+        self.saints = None
+        self.troparion = None
+        self.subtitles = None
         self.regenerate()
 
-    def _reset_attributes(self):
-        self.today = None
-        self.url = ''
-        self.title = ''
-        self.subtitles = []
-        self.saints = []
-        self.readings = []
-        self.troparion = {}
-        self.ready = False
-
     def clear(self):
-        self._reset_attributes()
+        super().clear()
+        self.saints = None
+        self.troparion = None
+        self.subtitles = None
 
     def regenerate(self):
         self.today = datetime.date.today()
         self.url = self._build_calendar_url()
 
-        page_content = self._fetch_page_content()
-        if page_content is not None:
-            self._scrape_page_content(page_content)
-            self.ready = True
+        soup = self.fetch_and_parse_html(self.url)
+        if soup is not None:
+            try:
+                self.title = self.extract_title(soup)
+                self.subtitles = self.extract_subtitle(soup)
+                self.saints = self.extract_saints(soup)
+                self.readings = self.extract_readings(soup)
+                self.troparion = self._extract_troparion(soup)
+                self.ready = True
+            except Exception as e:
+                logger.error(f"Failed to parse the webpage: {e}", exc_info=True)
 
     def _build_calendar_url(self):
         url = f'{self.BASE_URL}' \
@@ -49,52 +50,23 @@ class OrthodoxRussianLectionary:
               f'&dt=1&header=1&lives=1&trp=2&scripture=2'
         return url
 
-    def _fetch_page_content(self):
-        try:
-            r = requests.get(self.url)
-            r.raise_for_status()
-            return r.text
-        except requests.exceptions.HTTPError as errh:
-            logger.error(f"HTTP Error: {errh}", exc_info=True)
-            return None
-        except requests.exceptions.ConnectionError as errc:
-            logger.error(f"Error Connecting: {errc}", exc_info=True)
-            return None
-        except requests.exceptions.Timeout as errt:
-            logger.error(f"Timeout Error: {errt}", exc_info=True)
-            return None
-        except requests.exceptions.RequestException as err:
-            logger.error(f"Something Else: {err}", exc_info=True)
-            return None
+    def extract_title(self, soup):
+        return soup.select_one('span[class="dataheader"]').text
 
-    def _scrape_page_content(self, page_content):
-        try:
-            soup = BeautifulSoup(page_content, 'html.parser')
-            self.title, self.subtitles = self._extract_title_and_subtitles(soup)
-            self.saints = self._extract_saints(soup)
-            self.readings = self._extract_readings(soup)
-            self.troparion = self._extract_troparion(soup)
-        except Exception as e:
-            logger.error(f"Failed to parse the webpage: {e}", exc_info=True)
-
-    @staticmethod
-    def _extract_title_and_subtitles(soup):
-        title = soup.select_one('span[class="dataheader"]').text
+    def extract_subtitle(self, soup):
         a = soup.select_one('span[class="headerheader"]').text
         b = soup.select_one('span[class="headerheader"]>span').text.strip()
-        subtitles = [item for item in [a.replace(b, '').strip(), b] if item]
-        return title, subtitles
+        return [item for item in [a.replace(b, '').strip(), b] if item]
 
     @staticmethod
-    def _extract_saints(soup):
+    def extract_saints(soup):
         return [
             item
             for item in soup.select_one('span[class="normaltext"]').text.split('\n')
             if item  # Rid the list of empty strings
         ]
 
-    @staticmethod
-    def _extract_readings(soup):
+    def extract_readings(self, soup):
         readings_elements = soup.select('span[class="normaltext"]')
         if len(readings_elements) < 2:  # make sure there are at least two elements
             logger.error("Couldn't find the readings on the page")
