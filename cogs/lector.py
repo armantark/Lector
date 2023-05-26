@@ -439,8 +439,7 @@ class Lectionary(commands.Cog):
         try:
             if self.EARLIEST_TIME <= current_hour <= self.LATEST_TIME:
                 # Regenerate all if it's the earliest time
-                if current_hour == self.EARLIEST_TIME:
-                    self.regenerate_all()
+                self.regenerate_all()
 
                 await ctx.message.add_reaction('✅')
                 await self.push_subscriptions(current_hour)
@@ -461,8 +460,7 @@ class Lectionary(commands.Cog):
         if (self.EARLIEST_TIME <= current_hour <= self.LATEST_TIME) and (self.last_fulfill != current_hour):
             logger.debug(f"Starting to fulfill subscriptions for {current_hour} hour")
             # Make sure the lectionary embeds are updated for the day
-            if current_hour == self.EARLIEST_TIME:
-                self.regenerate_all()
+            self.regenerate_all()
 
             try:
                 await self.push_subscriptions(current_hour)
