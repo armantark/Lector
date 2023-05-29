@@ -1,4 +1,3 @@
-import datetime
 import re
 
 from helpers import bible_url, date_expand
@@ -12,7 +11,6 @@ class OrthodoxAmericanLectionary(Lectionary):
 
     def regenerate(self):
         super().regenerate()
-        self.today = datetime.date.today()
         self.url = self.today.strftime('https://www.oca.org/readings/daily/%Y/%m/%d')
         self.extract_title(None)
 
