@@ -34,6 +34,7 @@ class Lectionary(ABC):
     @abstractmethod
     def regenerate(self):
         self.last_regeneration = datetime.datetime.now()
+        self.today = datetime.date.today()
         pass
 
     def fetch_and_parse_html(self, url):

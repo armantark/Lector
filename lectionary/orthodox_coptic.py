@@ -1,5 +1,3 @@
-import datetime
-
 from helpers import bible_url, date_expand
 from lectionary.lectionary import Lectionary
 
@@ -49,7 +47,6 @@ class OrthodoxCopticLectionary(Lectionary):
 
     def regenerate(self):
         super().regenerate()
-        self.today = datetime.date.today()
         self.url = self.today.strftime('https://copticchurch.net/readings??g_year=%Y&g_month=%m&g_day=%d')
 
         soup = self.fetch_and_parse_html(self.url)

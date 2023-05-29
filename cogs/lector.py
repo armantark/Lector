@@ -99,7 +99,7 @@ class Lectionary(commands.Cog):
 
     def regenerate_all(self):
         for index in range(len(self.lectionaries)):
-            self.lectionaries[index].regenerate()
+            self._get_or_regenerate_lectionary(index)
         logger.debug('Refetched lectionary data')
 
     @staticmethod

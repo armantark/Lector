@@ -1,4 +1,3 @@
-import datetime
 import re
 
 from helpers import bible_url, logger
@@ -28,7 +27,6 @@ class OrthodoxRussianLectionary(Lectionary):
 
     def regenerate(self):
         super().regenerate()
-        self.today = datetime.date.today()
         self.url = self._build_calendar_url()
 
         soup = self.fetch_and_parse_html(self.url)
