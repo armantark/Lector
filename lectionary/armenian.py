@@ -33,7 +33,8 @@ class ArmenianLectionary(Lectionary):
 
     def regenerate(self):
         super().regenerate()  # Update last_regeneration timestamp
-        self.url = self.today.strftime('https://armenianscripture.wordpress.com/%Y/%m/%d/%B-%d-%Y/')
+        self.url = self.today.strftime(
+            'https://armenianscripture.wordpress.com/%Y/%m/%-d/').lower() + self.today.strftime('%B-%-d-%Y').lower()
         soup = self.fetch_and_parse_html(self.url)
         if soup is not None:
             self.title = self.extract_title(soup)
@@ -44,7 +45,9 @@ class ArmenianLectionary(Lectionary):
 
     def extract_title(self, soup):
         h3_elements = soup.select('h3')
-        return h3_elements[0].text if len(h3_elements) > 0 else ''
+        title = h3_elements[0].text if len(h3_elements) > 0 else ''
+        title_with_spaces = title.replace(",", ", ")
+        return title_with_spaces
 
     def extract_subtitle(self, soup):
         return date_expand.auto_expand(self.today, self.title)
