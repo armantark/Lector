@@ -46,7 +46,7 @@ class ArmenianLectionary(Lectionary):
     def extract_title(self, soup):
         h3_elements = soup.select('h3')
         title = h3_elements[0].text if len(h3_elements) > 0 else ''
-        title_with_spaces = title.replace(",", ", ")
+        title_with_spaces = title.replace(",", ",\n")
         return title_with_spaces
 
     def extract_subtitle(self, soup):
