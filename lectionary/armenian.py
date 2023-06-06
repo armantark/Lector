@@ -35,6 +35,7 @@ class ArmenianLectionary(Lectionary):
         super().regenerate()  # Update last_regeneration timestamp
         self.url = self.today.strftime(
             'https://armenianscripture.wordpress.com/%Y/%m/%-d/').lower() + self.today.strftime('%B-%-d-%Y').lower()
+        self.url = "https://armenianscripture.wordpress.com/2023/06/02/june-2-2023/"
         soup = self.fetch_and_parse_html(self.url)
         if soup is not None:
             self.title = self.extract_title(soup)

@@ -9,6 +9,7 @@ def load_json(file_path):
 
 REPLACEMENTS = load_json('helpers/replacements.json')
 ABBREVIATIONS = load_json('helpers/abbreviations.json')
+DEUTEROCANON = load_json('helpers/deuterocanon.json')
 
 
 def convert(reference):
@@ -47,8 +48,13 @@ def convert(reference):
         anchor = anchor.replace(item, item.lower())
 
     reference = shorten(reference).replace(' ', '+')
-    return f'[{anchor}](https://biblegateway.com/passage/?search={reference})'
-
+    reference_code = reference.split("+")[0]
+    is_apocrypha = reference_code in DEUTEROCANON
+    url = f'[{anchor}](https://biblegateway.com/passage/?search={reference}'
+    if is_apocrypha:
+        url += "&version=NRSVCE"  # can change later
+    url += ")"
+    return url
 
 def html_convert(text):
     """
