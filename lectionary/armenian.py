@@ -1,3 +1,5 @@
+import re
+
 import requests
 from bs4 import BeautifulSoup, NavigableString
 
@@ -35,7 +37,7 @@ class ArmenianLectionary(Lectionary):
         super().regenerate()  # Update last_regeneration timestamp
         self.url = self.today.strftime(
             'https://armenianscripture.wordpress.com/%Y/%m/%-d/').lower() + self.today.strftime('%B-%-d-%Y').lower()
-        # self.url = "https://armenianscripture.wordpress.com/2023/06/02/june-2-2023/"
+        self.url = "https://armenianscripture.wordpress.com/2023/06/13/june-13-2023/"
         soup = self.fetch_and_parse_html(self.url)
         if soup is not None:
             self.title = self.extract_title(soup)
@@ -47,8 +49,8 @@ class ArmenianLectionary(Lectionary):
     def extract_title(self, soup):
         h3_elements = soup.select('h3')
         title = h3_elements[0].text if len(h3_elements) > 0 else ''
-        title_with_spaces = title.replace(",", ",\n")
-        return title_with_spaces
+        title_with_newlines = re.sub(r',(?!\s)', ',\n', title)
+        return title_with_newlines
 
     def extract_subtitle(self, soup):
         return date_expand.auto_expand(self.today, self.title)
