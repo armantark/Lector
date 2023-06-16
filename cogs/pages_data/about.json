@@ -5,7 +5,7 @@
         "Developer": "[Arman Tarkhanian](https://github.com/armantark)",
         "Version": "Alpha",
         "License": "[MIT](https://github.com/fenuwu/lector-bot/blob/master/LICENSE)",
-        "Repository": "[lector-bot](https://github.com/fenuwu/lector-bot)",
+        "Repository": "[lector-bot](https://github.com/armantark/Lector)",
         "Library": "[discord.py](https://github.com/Rapptz/discord.py)"
     }
 }
