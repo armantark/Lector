@@ -38,12 +38,17 @@ class ArmenianLectionary(Lectionary):
         self.url = self.today.strftime(
             'https://armenianscripture.wordpress.com/%Y/%m/%-d/').lower() + self.today.strftime('%B-%-d-%Y').lower()
         # self.url = "https://armenianscripture.wordpress.com/2023/06/13/june-13-2023/"
+        synaxarium_url = self.today.strftime('https://ststepanos.org/calendars/category/feastsofsaints/%Y-%m-%d/')
         soup = self.fetch_and_parse_html(self.url)
         if soup is not None:
             self.title = self.extract_title(soup)
             self.subtitle = self.extract_subtitle(soup)
             self.readings = self.extract_readings(soup)
-            self.synaxarium = self.get_synaxarium()
+            self.synaxarium = self.get_synaxarium(synaxarium_url)
+            if self.synaxarium == '':
+                synaxarium_url = self.today.strftime(
+                    'https://ststepanos.org/calendars/category/dominicalfeasts/%Y-%m-%d/')
+                self.synaxarium = self.get_synaxarium(synaxarium_url)
             self.ready = True
 
     def extract_title(self, soup):
@@ -73,11 +78,11 @@ class ArmenianLectionary(Lectionary):
         else:
             return ''
 
-    def get_synaxarium(self):
+    @staticmethod
+    def get_synaxarium(url):
         """
         Get the daily synaxarium (and implicit color)
         """
-        url = self.today.strftime('https://ststepanos.org/calendars/category/dominicalfeasts/%Y-%m-%d/')
         try:
             r = requests.get(url, headers={'User-Agent': ''})
             r.raise_for_status()
