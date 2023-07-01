@@ -39,17 +39,28 @@ class ArmenianLectionary(Lectionary):
             'https://armenianscripture.wordpress.com/%Y/%m/%-d/').lower()
         # self.url = "https://armenianscripture.wordpress.com/2023/06/13/june-13-2023/"
         synaxarium_url = self.today.strftime('https://ststepanos.org/calendars/category/feastsofsaints/%Y-%m-%d/')
-        soup = self.fetch_and_parse_html(self.url)
-        if soup is not None:
-            self.title = self.extract_title(soup)
-            self.subtitle = self.extract_subtitle(soup)
-            self.readings = self.extract_readings(soup)
-            self.synaxarium = self.get_synaxarium(synaxarium_url)
-            if self.synaxarium == '':
-                synaxarium_url = self.today.strftime(
-                    'https://ststepanos.org/calendars/category/dominicalfeasts/%Y-%m-%d/')
+
+        # Fetch the initial page
+        initial_soup = self.fetch_and_parse_html(self.url)
+        if initial_soup is not None:
+            # Find the "Continue reading →" link
+            continue_reading_link = initial_soup.find('a', text='Continue reading →')
+            if continue_reading_link is None:
+                print(f"No 'Continue reading →' link found on {self.url}")
+                return
+            # Fetch the linked page
+            self.url = continue_reading_link['href']
+            soup = self.fetch_and_parse_html(self.url)
+            if soup is not None:
+                self.title = self.extract_title(soup)
+                self.subtitle = self.extract_subtitle(soup)
+                self.readings = self.extract_readings(soup)
                 self.synaxarium = self.get_synaxarium(synaxarium_url)
-            self.ready = True
+                if self.synaxarium == '':
+                    synaxarium_url = self.today.strftime(
+                        'https://ststepanos.org/calendars/category/dominicalfeasts/%Y-%m-%d/')
+                    self.synaxarium = self.get_synaxarium(synaxarium_url)
+                self.ready = True
 
     def extract_title(self, soup):
         h3_elements = soup.select('h3')
