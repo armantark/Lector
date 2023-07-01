@@ -36,7 +36,7 @@ class ArmenianLectionary(Lectionary):
     def regenerate(self):
         super().regenerate()  # Update last_regeneration timestamp
         self.url = self.today.strftime(
-            'https://armenianscripture.wordpress.com/%Y/%m/%-d/').lower() + self.today.strftime('%B-%-d-%Y').lower()
+            'https://armenianscripture.wordpress.com/%Y/%m/%-d/').lower()
         # self.url = "https://armenianscripture.wordpress.com/2023/06/13/june-13-2023/"
         synaxarium_url = self.today.strftime('https://ststepanos.org/calendars/category/feastsofsaints/%Y-%m-%d/')
         soup = self.fetch_and_parse_html(self.url)
