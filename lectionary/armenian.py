@@ -70,7 +70,7 @@ class ArmenianLectionary(Lectionary):
         return None
 
     def extract_title(self, soup):
-        h3_elements = soup.select('h3')
+        h3_elements = soup.select('h2')
         title = h3_elements[0].text if len(h3_elements) > 0 else ''
         title_with_newlines = re.sub(r',(?!\s)', ',\n', title)
         return title_with_newlines
@@ -79,7 +79,7 @@ class ArmenianLectionary(Lectionary):
         return date_expand.auto_expand(self.today, self.title)
 
     def extract_readings(self, soup):
-        readings_raw_select = soup.select('h3')[1]
+        readings_raw_select = soup.select('h3')[0]
         readings = '\n'.join(
             str(content).strip() for content in readings_raw_select.contents if isinstance(content, NavigableString))
 
