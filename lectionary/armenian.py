@@ -44,12 +44,12 @@ class ArmenianLectionary(Lectionary):
         initial_soup = self.fetch_and_parse_html(self.url)
         if initial_soup is not None:
             # Find the "Continue reading →" link
-            continue_reading_link = initial_soup.find('a', text='Continue reading →')
+            continue_reading_link = self.extract_continue_reading_url(initial_soup)
             if continue_reading_link is None:
-                print(f"No 'Continue reading →' link found on {self.url}")
+                print(f"No 'Continue reading' link found on {self.url}")
                 return
             # Fetch the linked page
-            self.url = continue_reading_link['href']
+            self.url = continue_reading_link
             soup = self.fetch_and_parse_html(self.url)
             if soup is not None:
                 self.title = self.extract_title(soup)
@@ -61,6 +61,13 @@ class ArmenianLectionary(Lectionary):
                         'https://ststepanos.org/calendars/category/dominicalfeasts/%Y-%m-%d/')
                     self.synaxarium = self.get_synaxarium(synaxarium_url)
                 self.ready = True
+
+    @staticmethod
+    def extract_continue_reading_url(soup):
+        for tag in soup.find_all('a'):
+            if 'continue reading' in tag.get_text().lower():
+                return tag.get('href')
+        return None
 
     def extract_title(self, soup):
         h3_elements = soup.select('h3')
