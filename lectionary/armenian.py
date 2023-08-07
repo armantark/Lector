@@ -79,9 +79,16 @@ class ArmenianLectionary(Lectionary):
         return date_expand.auto_expand(self.today, self.title)
 
     def extract_readings(self, soup):
-        readings_raw_select = soup.select('h3')[0]
+        # Find the <p> elements containing the readings
+        readings_raw_select = soup.select('p')
+
+        # Filter out the <p> elements containing only <strong> or <em> tags
+        readings_raw = [p for p in readings_raw_select if not p.find_all(['strong', 'em'])]
+
+        # Extract the text from the <p> elements
         readings = '\n'.join(
-            str(content).strip() for content in readings_raw_select.contents if isinstance(content, NavigableString))
+            str(content).strip() for reading in readings_raw for content in reading.contents if
+            isinstance(content, NavigableString))
 
         for original, substitute in self.SUBSTITUTIONS.items():
             readings = readings.replace(original, substitute)
