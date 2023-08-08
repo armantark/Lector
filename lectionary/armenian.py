@@ -70,8 +70,8 @@ class ArmenianLectionary(Lectionary):
         return None
 
     def extract_title(self, soup):
-        h3_elements = soup.select('h2')
-        title = h3_elements[0].text if len(h3_elements) > 0 else ''
+        p_elements = soup.select('p strong')
+        title = p_elements[0].text if len(p_elements) > 0 else ''
         title_with_newlines = re.sub(r',(?!\s)', ',\n', title)
         return title_with_newlines
 
