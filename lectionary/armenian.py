@@ -60,6 +60,10 @@ class ArmenianLectionary(Lectionary):
                     synaxarium_url = self.today.strftime(
                         'https://ststepanos.org/calendars/category/dominicalfeasts/%Y-%m-%d/')
                     self.synaxarium = self.get_synaxarium(synaxarium_url)
+                if self.synaxarium == '':
+                    synaxarium_url = self.today.strftime(
+                        'https://ststepanos.org/calendars/category/churchcelebrations/%Y-%m-%d/')
+                    self.synaxarium = self.get_synaxarium(synaxarium_url)
                 self.ready = True
 
     @staticmethod
