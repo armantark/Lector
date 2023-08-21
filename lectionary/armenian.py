@@ -51,6 +51,7 @@ class ArmenianLectionary(Lectionary):
             # Fetch the linked page
             self.url = continue_reading_link
             soup = self.fetch_and_parse_html(self.url)
+            # soup = initial_soup
             if soup is not None:
                 self.title = self.extract_title(soup)
                 self.subtitle = self.extract_subtitle(soup)
@@ -74,8 +75,8 @@ class ArmenianLectionary(Lectionary):
         return None
 
     def extract_title(self, soup):
-        p_elements = soup.select('p strong')
-        title = p_elements[0].text if len(p_elements) > 0 else ''
+        h3_elements = soup.select('h3')
+        title = h3_elements[0].text if len(h3_elements) > 0 else ''
         title_with_newlines = re.sub(r',(?!\s)', ',\n', title)
         return title_with_newlines
 
@@ -83,20 +84,12 @@ class ArmenianLectionary(Lectionary):
         return date_expand.auto_expand(self.today, self.title)
 
     def extract_readings(self, soup):
-        # Find the <p> elements containing the readings
-        readings_raw_select = soup.select('p')
-
-        # Filter out the <p> elements containing only <strong> or <em> tags
-        readings_raw = [p for p in readings_raw_select if not p.find_all(['strong', 'em'])]
-
-        # Extract the text from the <p> elements
+        readings_raw_select = soup.select('h3')[1]
         readings = '\n'.join(
-            str(content).strip() for reading in readings_raw for content in reading.contents if
-            isinstance(content, NavigableString))
+            str(content).strip() for content in readings_raw_select.contents if isinstance(content, NavigableString))
 
         for original, substitute in self.SUBSTITUTIONS.items():
             readings = readings.replace(original, substitute)
-
         return readings.split('\n') if readings != '[No readings for this day]' else [readings]
 
     @staticmethod
