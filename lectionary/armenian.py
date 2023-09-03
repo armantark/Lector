@@ -75,9 +75,25 @@ class ArmenianLectionary(Lectionary):
         return None
 
     def extract_title(self, soup):
-        h3_elements = soup.select('h3')
-        title = h3_elements[0].text if len(h3_elements) > 0 else ''
+        # Define the different selectors we'll be using in order of preference
+        selectors = ['h3', 'p strong', 'p']
+
+        # Initialize title to an empty string
+        title = ''
+
+        # Loop through each selector to find a title
+        for selector in selectors:
+            elements = soup.select(selector)
+            title = elements[0].text if len(elements) > 0 else ''
+            print(elements)
+
+            # If the title does not contain "Share this:", we've found a good title
+            if "Share this:" not in title and title != '':
+                break
+
+        # Replace commas without spaces after them with ',\n'
         title_with_newlines = re.sub(r',(?!\s)', ',\n', title)
+
         return title_with_newlines
 
     def extract_subtitle(self, soup):
