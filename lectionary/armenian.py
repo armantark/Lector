@@ -66,6 +66,8 @@ class ArmenianLectionary(Lectionary):
                         'https://ststepanos.org/calendars/category/churchcelebrations/%Y-%m-%d/')
                     self.synaxarium = self.get_synaxarium(synaxarium_url)
                 self.ready = True
+        else:
+            logger.error(f'Failed to get website URL', exc_info=True)
 
     @staticmethod
     def extract_continue_reading_url(soup):
@@ -145,7 +147,7 @@ class ArmenianLectionary(Lectionary):
             logger.warning('Data not ready for JSON build.')
             return []
 
-        return [
+        json = [
             {
                 'title': self.title + '\n' + self.subtitle,
                 'color': 0xca0000 if self.synaxarium else 0x202225,
@@ -157,6 +159,7 @@ class ArmenianLectionary(Lectionary):
                 }
             }
         ]
+        return json
 
     def _build_description(self):
         synaxarium = f'[Synaxarium]({self.synaxarium})\n\n' if self.synaxarium else ''
