@@ -85,7 +85,6 @@ class ArmenianLectionary(Lectionary):
         for selector in selectors:
             elements = soup.select(selector)
             title = elements[0].text if len(elements) > 0 else ''
-            print(elements)
 
             # If the title does not contain "Share this:", we've found a good title
             if "Share this:" not in title and title != '':
@@ -103,6 +102,12 @@ class ArmenianLectionary(Lectionary):
         readings_raw_select = soup.select('h3')[1]
         readings = '\n'.join(
             str(content).strip() for content in readings_raw_select.contents if isinstance(content, NavigableString))
+
+        if "Like this:" in readings:
+            readings_raw_select = soup.select('p')[1]
+            readings = '\n'.join(
+                str(content).strip() for content in readings_raw_select.contents if
+                isinstance(content, NavigableString))
 
         for original, substitute in self.SUBSTITUTIONS.items():
             readings = readings.replace(original, substitute)
