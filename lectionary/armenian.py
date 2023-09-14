@@ -78,7 +78,7 @@ class ArmenianLectionary(Lectionary):
 
     def extract_title(self, soup):
         # Define the different selectors we'll be using in order of preference
-        selectors = ['h3', 'p strong', 'p']
+        selectors = ['h3', 'p', 'p strong']
 
         # Initialize title to an empty string
         title = ''
@@ -101,18 +101,30 @@ class ArmenianLectionary(Lectionary):
         return date_expand.auto_expand(self.today, self.title)
 
     def extract_readings(self, soup):
-        readings_raw_select = soup.select('h3')[1]
-        readings = '\n'.join(
-            str(content).strip() for content in readings_raw_select.contents if isinstance(content, NavigableString))
+        # List of selectors to try
+        selectors = ['h3', 'p', 'p strong']
 
-        if "Like this:" in readings:
-            readings_raw_select = soup.select('p')[1]
-            readings = '\n'.join(
-                str(content).strip() for content in readings_raw_select.contents if
-                isinstance(content, NavigableString))
+        # Initialize readings to an empty string
+        readings = ''
 
+        # Loop through each selector to find suitable readings
+        for selector in selectors:
+            readings_raw_select = soup.select(selector)
+            if len(readings_raw_select) > 1:
+                readings = '\n'.join(
+                    str(content).strip() for content in readings_raw_select[1].contents if
+                    isinstance(content, NavigableString)
+                )
+
+            # Break out of the loop if suitable readings are found
+            if "Like this:" not in readings and readings != '':
+                break
+
+        # Perform substitutions
         for original, substitute in self.SUBSTITUTIONS.items():
             readings = readings.replace(original, substitute)
+
+        # Return the readings, handling the "[No readings for this day]" case
         return readings.split('\n') if readings != '[No readings for this day]' else [readings]
 
     @staticmethod
