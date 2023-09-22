@@ -1,7 +1,7 @@
 import re
 
 import requests
-from bs4 import BeautifulSoup, NavigableString
+from bs4 import BeautifulSoup
 
 from helpers import bible_url, date_expand, logger
 from lectionary.lectionary import Lectionary
@@ -101,31 +101,37 @@ class ArmenianLectionary(Lectionary):
         return date_expand.auto_expand(self.today, self.title)
 
     def extract_readings(self, soup):
-        # List of selectors to try
-        selectors = ['h3', 'p', 'p strong']
-
-        # Initialize readings to an empty string
+        # Initialize
+        selectors = ['h3', 'p']
         readings = ''
+        readings_list = []
+        bible_verse_regex = re.compile(r'\b([A-Za-z\s]+\d+:\d+)\b')
 
         # Loop through each selector to find suitable readings
         for selector in selectors:
             readings_raw_select = soup.select(selector)
-            if len(readings_raw_select) > 1:
-                readings = '\n'.join(
-                    str(content).strip() for content in readings_raw_select[1].contents if
-                    isinstance(content, NavigableString)
-                )
 
-            # Break out of the loop if suitable readings are found
-            if "Like this:" not in readings and readings != '':
-                break
+            if readings_raw_select:
+                readings = '\n'.join(str(content).strip() for content in readings_raw_select)
+                readings = readings.replace('<br/>', '\n')  # Remove or replace HTML tags if needed
+
+                # Check for suitable readings and break if found
+                if bible_verse_regex.search(readings):
+                    readings_list = bible_verse_regex.findall(readings)
+                    break
+
+        # Remove duplicates and clean up readings
+        readings_list = list(set(reading.strip() for reading in readings_list))
+
+        # Return if no readings are found
+        if not readings_list:
+            return ["[No readings for this day]"]
 
         # Perform substitutions
         for original, substitute in self.SUBSTITUTIONS.items():
-            readings = readings.replace(original, substitute)
+            readings_list = [reading.replace(original, substitute) for reading in readings_list]
 
-        # Return the readings, handling the "[No readings for this day]" case
-        return readings.split('\n') if readings != '[No readings for this day]' else [readings]
+        return readings_list
 
     @staticmethod
     def _get_notes_url(r, soup):
