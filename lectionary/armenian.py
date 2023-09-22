@@ -110,7 +110,7 @@ class ArmenianLectionary(Lectionary):
         selectors = ['h3', 'p']
         readings = ''
         readings_list = []
-        bible_verse_regex = re.compile(r'\b([A-Za-z\s]+\d+:\d+)\b')
+        bible_verse_regex = re.compile(r'\b[A-Za-z\s]+\d+:\d+(?:-\d+(?::\d+)?)?\b')
 
         # Loop through each selector to find suitable readings
         for selector in selectors:
@@ -126,8 +126,7 @@ class ArmenianLectionary(Lectionary):
                     break
 
         # Remove duplicates and clean up readings
-        readings_list = list(set(reading.strip() for reading in readings_list))
-
+        readings_list = list(dict.fromkeys(x.strip() for x in readings_list))
         # Return if no readings are found
         if not readings_list:
             return ["[No readings for this day]"]
