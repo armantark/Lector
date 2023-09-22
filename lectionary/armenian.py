@@ -86,11 +86,16 @@ class ArmenianLectionary(Lectionary):
         # Loop through each selector to find a title
         for selector in selectors:
             elements = soup.select(selector)
-            title = elements[0].text if len(elements) > 0 else ''
+            if len(elements) > 0:
+                # Manually convert <br/> tags to line breaks
+                for br in elements[0].find_all("br"):
+                    br.replace_with("\n")
 
-            # If the title does not contain "Share this:", we've found a good title
-            if "Share this:" not in title and title != '':
-                break
+                title = elements[0].text.strip()
+
+                # If the title does not contain "Share this:", we've found a good title
+                if "Share this:" not in title and title != '':
+                    break
 
         # Replace commas without spaces after them with ',\n'
         title_with_newlines = re.sub(r',(?!\s)', ',\n', title)
