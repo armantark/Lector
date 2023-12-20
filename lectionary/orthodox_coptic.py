@@ -117,7 +117,7 @@ class OrthodoxCopticLectionary(Lectionary):
                 'name': 'Matins',
                 'value': f'Psalm: {links[2]}\nGospel: {links[3]}'
             },
-            self.build_liturgy_json(links[4:], 7)
+            self.build_liturgy_json(links[4:])
         ]
 
     def build_no_vespers_json(self, links):
@@ -126,10 +126,10 @@ class OrthodoxCopticLectionary(Lectionary):
                 'name': 'Matins',
                 'value': f'Psalm: {links[0]}\nGospel: {links[1]}'
             },
-            self.build_liturgy_json(links[2:], 5)
+            self.build_liturgy_json(links[2:])
         ]
 
-    def build_liturgy_json(self, links, psalm_index):
+    def build_liturgy_json(self, links):
         liturgy_data = {
             'name': 'Liturgy',
             'value': '',
@@ -147,9 +147,9 @@ class OrthodoxCopticLectionary(Lectionary):
         liturgy_data['value'] += f'Synaxarium:\n'
         liturgy_data['value'] += '\n'.join([f'• {item}' for item in self.synaxarium]) + '\n'
 
-        if len(links) > psalm_index:
-            liturgy_data['value'] += f'Psalm: {links[psalm_index]}\n'
-        if len(links) > psalm_index + 1:
-            liturgy_data['value'] += f'Gospel: {links[psalm_index + 1]}'
+        if len(links) > 3:
+            liturgy_data['value'] += f'Psalm: {links[3]}\n'
+        if len(links) > 4:
+            liturgy_data['value'] += f'Gospel: {links[4]}'
 
         return liturgy_data
