@@ -136,20 +136,22 @@ class OrthodoxCopticLectionary(Lectionary):
             'inline': False
         }
 
-        # Check each index before accessing it in the links list
-        if len(links) > 0:
-            liturgy_data['value'] += f'Pauline Epistle: {links[0]}\n'
-        if len(links) > 1:
-            liturgy_data['value'] += f'Catholic Epistle: {links[1]}\n'
-        if len(links) > 2:
-            liturgy_data['value'] += f'Acts of the Apostles: {links[2]}\n'
+        # Define the titles and corresponding indices
+        liturgy_parts = [
+            ('Pauline Epistle', 0),
+            ('Catholic Epistle', 1),
+            ('Acts of the Apostles', 2),
+            ('Psalm', 3),
+            ('Gospel', 4)
+        ]
 
-        liturgy_data['value'] += f'Synaxarium:\n'
-        liturgy_data['value'] += '\n'.join([f'• {item}' for item in self.synaxarium]) + '\n'
-
-        if len(links) > 3:
-            liturgy_data['value'] += f'Psalm: {links[3]}\n'
-        if len(links) > 4:
-            liturgy_data['value'] += f'Gospel: {links[4]}'
+        # Iterate through the liturgy parts and append to value if index exists
+        for title, index in liturgy_parts:
+            if len(links) > index:
+                if index == 3:
+                    # Add Synaxarium
+                    liturgy_data['value'] += 'Synaxarium:\n'
+                    liturgy_data['value'] += '\n'.join([f'• {item}' for item in self.synaxarium]) + '\n'
+                liturgy_data['value'] += f'{title}: {links[index]}\n'
 
         return liturgy_data
