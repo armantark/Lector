@@ -37,37 +37,47 @@ class ArmenianLectionary(Lectionary):
         super().regenerate()  # Update last_regeneration timestamp
         self.url = self.today.strftime(
             'https://armenianscripture.wordpress.com/%Y/%m/%-d/').lower()
-        # self.url = "https://armenianscripture.wordpress.com/2023/06/13/june-13-2023/"
         synaxarium_url = self.today.strftime('https://ststepanos.org/calendars/category/feastsofsaints/%Y-%m-%d/')
 
         # Fetch the initial page
         initial_soup = self.fetch_and_parse_html(self.url)
-        if initial_soup is not None:
-            # Find the "Continue reading →" link
-            continue_reading_link = self.extract_continue_reading_url(initial_soup)
-            if continue_reading_link is None:
-                print(f"No 'Continue reading' link found on {self.url}")
-                return
-            # Fetch the linked page
-            self.url = continue_reading_link
-            soup = self.fetch_and_parse_html(self.url)
-            # soup = initial_soup
-            if soup is not None:
-                self.title = self.extract_title(soup)
-                self.subtitle = self.extract_subtitle(soup)
-                self.readings = self.extract_readings(soup)
-                self.synaxarium = self.get_synaxarium(synaxarium_url)
-                if self.synaxarium == '':
-                    synaxarium_url = self.today.strftime(
-                        'https://ststepanos.org/calendars/category/dominicalfeasts/%Y-%m-%d/')
-                    self.synaxarium = self.get_synaxarium(synaxarium_url)
-                if self.synaxarium == '':
-                    synaxarium_url = self.today.strftime(
-                        'https://ststepanos.org/calendars/category/churchcelebrations/%Y-%m-%d/')
-                    self.synaxarium = self.get_synaxarium(synaxarium_url)
-                self.ready = True
-        else:
-            logger.error(f'Failed to get website URL', exc_info=True)
+        if initial_soup is None:
+            logger.error(f'Failed to fetch initial Armenian lectionary page: {self.url}')
+            return
+
+        # Find the "Continue reading →" link
+        continue_reading_link = self.extract_continue_reading_url(initial_soup)
+        if continue_reading_link is None:
+            logger.error(f'No "Continue reading" link found on Armenian lectionary page: {self.url}')
+            return
+
+        # Fetch the linked page
+        self.url = continue_reading_link
+        soup = self.fetch_and_parse_html(self.url)
+        if soup is None:
+            logger.error(f'Failed to fetch detailed Armenian lectionary page: {self.url}')
+            return
+
+        # Extract all required content
+        self.title = self.extract_title(soup)
+        self.subtitle = self.extract_subtitle(soup)
+        self.readings = self.extract_readings(soup)
+        
+        # Try to fetch synaxarium from different possible URLs
+        self.synaxarium = self.get_synaxarium(synaxarium_url)
+        if not self.synaxarium:
+            logger.debug('No feasts of saints found, checking dominical feasts')
+            synaxarium_url = self.today.strftime(
+                'https://ststepanos.org/calendars/category/dominicalfeasts/%Y-%m-%d/')
+            self.synaxarium = self.get_synaxarium(synaxarium_url)
+            
+        if not self.synaxarium:
+            logger.debug('No dominical feasts found, checking church celebrations')
+            synaxarium_url = self.today.strftime(
+                'https://ststepanos.org/calendars/category/churchcelebrations/%Y-%m-%d/')
+            self.synaxarium = self.get_synaxarium(synaxarium_url)
+
+        self.ready = True
 
     @staticmethod
     def extract_continue_reading_url(soup):
