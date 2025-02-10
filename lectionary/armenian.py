@@ -39,6 +39,9 @@ class ArmenianLectionary(Lectionary):
             'https://armenianscripture.wordpress.com/%Y/%m/%-d/').lower()
         synaxarium_url = self.today.strftime('https://ststepanos.org/calendars/category/feastsofsaints/%Y-%m-%d/')
 
+        if self.url is None:
+            logger.error('Failed to generate Armenian lectionary URL')
+
         # Fetch the initial page
         initial_soup = self.fetch_and_parse_html(self.url)
         if initial_soup is None:
