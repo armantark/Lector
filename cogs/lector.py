@@ -181,11 +181,28 @@ class Lectionary(commands.Cog):
                 return None
         return self.lectionaries[index]
 
-    @staticmethod
-    async def send_lectionary(ctx, lectionary):
-        for piece in lectionary.build_json():
-            await ctx.send(embed=discord.Embed.from_dict(piece))
+    @classmethod
+    def _truncate_title(cls, title, max_length=256):
+        if len(title) <= max_length:
+            return title
+        
+        suffix = " ... [truncated]"
+        suffix_length = len(suffix)
+        truncated_length = max_length - suffix_length
+        return f"{title[:truncated_length]}{suffix}"
 
+    @classmethod
+    async def send_lectionary(cls, ctx, lectionary):
+        try:
+            for piece in lectionary.build_json():
+                if 'title' in piece and piece['title']:
+                    piece['title'] = cls._truncate_title(piece['title'])
+                await ctx.send(embed=discord.Embed.from_dict(piece))
+        except Exception as e:
+            error_msg = f"Error: please contact <@239877908435435520> for assistance\nDetails: {str(e)}"
+            await ctx.send(error_msg)
+            logger.error(f"Error in send_lectionary: {str(e)}", exc_info=True)
+    
     '''SUBSCRIPTION COMMANDS'''
 
     @commands.command()
