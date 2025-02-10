@@ -50,16 +50,15 @@ class ArmenianLectionary(Lectionary):
 
         # Find the "Continue reading →" link
         continue_reading_link = self.extract_continue_reading_url(initial_soup)
-        if continue_reading_link is None:
-            logger.error(f'No "Continue reading" link found on Armenian lectionary page: {self.url}')
-            return
-
-        # Fetch the linked page
-        self.url = continue_reading_link
-        soup = self.fetch_and_parse_html(self.url)
-        if soup is None:
-            logger.error(f'Failed to fetch detailed Armenian lectionary page: {self.url}')
-            return
+        if continue_reading_link:
+            # Fetch the linked page
+            self.url = continue_reading_link
+            soup = self.fetch_and_parse_html(self.url)
+            if soup is None:
+                logger.error(f'Failed to fetch detailed Armenian lectionary page: {self.url}')
+                return
+        else:
+            soup = initial_soup
 
         # Extract all required content
         self.title = self.extract_title(soup)
