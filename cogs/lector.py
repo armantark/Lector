@@ -83,9 +83,10 @@ class Lectionary(commands.Cog):
             'catholic',
             'america orthodox',
             'coptic orthodox',
-            'greek orthodox',
+            # 'greek orthodox',
             'russian orthodox',
-            'revised common']
+            # 'revised common'
+        ]
         # Lectionary Objects
         self.lectionaries = [
             ArmenianLectionary(),
@@ -93,9 +94,10 @@ class Lectionary(commands.Cog):
             CatholicLectionary(),
             OrthodoxAmericanLectionary(),
             OrthodoxCopticLectionary(),
-            OrthodoxGreekLectionary(),
+            # OrthodoxGreekLectionary(),
             OrthodoxRussianLectionary(),
-            RevisedCommonLectionary()]
+            # RevisedCommonLectionary()
+        ]
 
     def regenerate_all(self):
         for index in range(len(self.lectionaries)):
@@ -115,9 +117,9 @@ class Lectionary(commands.Cog):
             'catholic': 2, 'c': 2,
             'american orthodox': 3, 'ao': 3, "oca": 3,
             'coptic orthodox': 4, 'co': 4,
-            'greek orthodox': 5, 'go': 5,
+            # 'greek orthodox': 5, 'go': 5,
             'russian orthodox': 6, 'ro': 6,
-            'revised common': 7, 'rcl': 7, 'r': 7
+            # 'revised common': 7, 'rcl': 7, 'r': 7
         }
 
         if lectionary in indexes:
@@ -137,9 +139,9 @@ class Lectionary(commands.Cog):
                            '\"Catholic\" (shortcut `c`)\n'
                            '\"American Orthodox\" (shortcut `ao` or `oca`)\n'
                            '\"Coptic Orthodox\" (shortcut `co`)\n'
-                           '\"Greek Orthodox\" (shortcut `go`)\n'
+                           '\"Greek Orthodox\" (shortcut `go`, currently disabled)\n'
                            '\"Russian Orthodox\" (shortcut `ro`)\n'
-                           '\"Revised Common\" (shortcut `rcl` or `r`)\n'
+                           '\"Revised Common\" (shortcut `rcl` or `r`, currently disabled)\n'
                            )
             return
 
