@@ -38,6 +38,16 @@ class Lectionary(commands.Cog):
 
         logger.debug(f'Bot booted. Will not fulfill subscriptions for {self.last_fulfill}:00 GMT or prior.')
 
+    @commands.Cog.listener()
+    async def on_ready(self):
+        logger.info(f'Bot is ready. Logged in as {self.bot.user.name}')
+        logger.info(f'Guilds: {", ".join([g.name for g in self.bot.guilds])}')
+        logger.info(f'Commands: {", ".join([c.name for c in self.bot.commands])}')
+
+    @commands.Cog.listener()
+    async def on_command_error(self, ctx, error):
+        logger.error(f'Error in {ctx.command}: {str(error)}')
+    
     def _start_event_loop(self):
         # Start up the event loop
         self.last_fulfill = datetime.datetime.utcnow().hour
