@@ -177,7 +177,7 @@ class Lectionary(commands.Cog):
         ) > datetime.timedelta(hours=1):
             self.lectionaries[index].regenerate()
             if not self.lectionaries[index].ready:
-                logger.error('Lectionary not regenerated correctly.', exc_info=True)
+                logger.error(f'Lectionary {type(self.lectionaries[index])} not regenerated correctly.', exc_info=True)
                 return None
         return self.lectionaries[index]
 
