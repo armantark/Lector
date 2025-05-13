@@ -158,23 +158,37 @@ class ArmenianLectionary(Lectionary):
             return ''
 
     @staticmethod
-    def get_synaxarium(url):
+    def get_synaxarium(_):
         """
-        Get the daily synaxarium (and implicit color)
+        Get the daily synaxarium from https://armenianchurch.ge/en/kalendar-prazdnikov
         """
+        import datetime
+        today = datetime.date.today()
         try:
-            r = requests.get(url, headers={'User-Agent': ''})
+            r = requests.get('https://armenianchurch.ge/en/kalendar-prazdnikov', headers={'User-Agent': ''})
             r.raise_for_status()
         except requests.exceptions.RequestException as e:
             logger.error(f'Failed to get synaxarium: {e}', exc_info=True)
             return ''
 
         soup = BeautifulSoup(r.text, 'html.parser')
-
-        # Check if the synaxarium link exists on the page
-        event_link_element = soup.select_one('h3[class^="tribe-events-list-event-title summary"]>a')
-        # Return the link if it exists, else return an empty string
-        return url if event_link_element else ''
+        events = soup.select('.nb-calendar__event')
+        for event in events:
+            month_tag = event.select_one('.nb-event__month')
+            day_tag = event.select_one('.nb-event__day')
+            link_tag = event.select_one('a.nb-event__link')
+            if not (month_tag and day_tag and link_tag):
+                continue
+            month = month_tag.get_text(strip=True)
+            day = day_tag.get_text(strip=True)
+            # Compare month and day to today
+            if month.lower().startswith(today.strftime('%B').lower()[:3]) or month.lower() == today.strftime('%B').lower():
+                try:
+                    if int(day) == today.day:
+                        return link_tag['href']
+                except ValueError:
+                    continue
+        return ''
 
     def build_json(self):
         if not self.ready:
