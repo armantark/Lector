@@ -151,12 +151,21 @@ class LectionaryCog(commands.Cog):
         combined_link = bible_url.build_combined_url(markdown_refs, "Read all on Bible Gateway")
         
         if combined_link:
-            # Append to description with a delimiter
-            current_desc = piece.get('description', '')
-            if current_desc:
-                piece['description'] = f"{current_desc}\n\n─────────────────────\n{combined_link}"
+            # If embed uses fields, add as a new field at the end
+            # If embed uses description only, append to description
+            if 'fields' in piece and piece['fields']:
+                piece['fields'].append({
+                    'name': '─────────────────────',
+                    'value': combined_link,
+                    'inline': False
+                })
             else:
-                piece['description'] = combined_link
+                # Append to description (for lectionaries like Armenian)
+                current_desc = piece.get('description', '')
+                if current_desc:
+                    piece['description'] = f"{current_desc}\n\n─────────────────────\n{combined_link}"
+                else:
+                    piece['description'] = combined_link
         
         return piece
 
