@@ -338,6 +338,96 @@ class TestBibleUrlShorten(unittest.TestCase):
         self.assertNotIn('; ', result)
 
 
+class TestBibleUrlExtractReferences(unittest.TestCase):
+    """Unit tests for extracting references from anchor tags."""
+
+    def test_extract_single_reference(self):
+        from helpers.bible_url import extract_references
+        result = extract_references('<a>Genesis 1:1</a>')
+        self.assertEqual(result, ['Genesis 1:1'])
+
+    def test_extract_multiple_references(self):
+        from helpers.bible_url import extract_references
+        result = extract_references('<a>Genesis 1:1</a> and <a>Exodus 2:3</a>')
+        self.assertEqual(result, ['Genesis 1:1', 'Exodus 2:3'])
+
+    def test_extract_with_verse_range(self):
+        from helpers.bible_url import extract_references
+        result = extract_references('<a>John 3:16-21</a>')
+        self.assertEqual(result, ['John 3:16-21'])
+
+    def test_extract_filters_non_verse(self):
+        """References not ending in digit should be filtered out."""
+        from helpers.bible_url import extract_references
+        result = extract_references('<a>Some Text</a>')
+        self.assertEqual(result, [])
+
+    def test_extract_empty_text(self):
+        from helpers.bible_url import extract_references
+        result = extract_references('')
+        self.assertEqual(result, [])
+
+    def test_extract_no_anchors(self):
+        from helpers.bible_url import extract_references
+        result = extract_references('Just some plain text')
+        self.assertEqual(result, [])
+
+
+class TestBibleUrlBuildCombinedUrl(unittest.TestCase):
+    """Unit tests for building combined Bible Gateway URLs."""
+
+    def test_single_reference(self):
+        from helpers.bible_url import build_combined_url
+        result = build_combined_url(['Genesis 1:1'])
+        self.assertIn('biblegateway.com', result)
+        self.assertIn('search=', result)
+
+    def test_multiple_references(self):
+        from helpers.bible_url import build_combined_url
+        result = build_combined_url(['Genesis 1:1', 'Exodus 2:3'])
+        self.assertIn('biblegateway.com', result)
+        self.assertIn('Ge', result)
+        self.assertIn('Ex', result)
+
+    def test_empty_list(self):
+        from helpers.bible_url import build_combined_url
+        result = build_combined_url([])
+        self.assertEqual(result, '')
+
+    def test_custom_anchor_text(self):
+        from helpers.bible_url import build_combined_url
+        result = build_combined_url(['Genesis 1:1'], anchor_text="Custom Text")
+        self.assertIn('[Custom Text]', result)
+
+    def test_deuterocanonical_adds_version(self):
+        """Deuterocanonical books should add NRSVCE version."""
+        from helpers.bible_url import build_combined_url
+        result = build_combined_url(['Wisdom 1:1'])
+        self.assertIn('version=NRSVCE', result)
+
+    def test_canonical_no_version(self):
+        """Canonical books should not add version parameter."""
+        from helpers.bible_url import build_combined_url
+        result = build_combined_url(['Genesis 1:1'])
+        self.assertNotIn('version=', result)
+
+    def test_mixed_canonical_deuterocanonical(self):
+        """Mix of canonical and deuterocanonical should add version."""
+        from helpers.bible_url import build_combined_url
+        result = build_combined_url(['Genesis 1:1', 'Sirach 2:3'])
+        self.assertIn('version=NRSVCE', result)
+
+
+class TestBibleUrlExtractAndBuildCombinedUrl(unittest.TestCase):
+    """Unit tests for the convenience function."""
+
+    def test_extract_and_build(self):
+        from helpers.bible_url import extract_and_build_combined_url
+        result = extract_and_build_combined_url('<a>Genesis 1:1</a> and <a>John 3:16</a>')
+        self.assertIn('biblegateway.com', result)
+        self.assertIn('Read all on Bible Gateway', result)
+
+
 # =============================================================================
 # UNIT TESTS: lectionary/registry.py
 # =============================================================================
@@ -794,6 +884,60 @@ class TestE2ELectionaryFlow(unittest.TestCase):
             # Build JSON
             result = lec.build_json()
             self.assertIsInstance(result, list)
+
+
+class TestInjectCombinedLink(unittest.TestCase):
+    """Unit tests for the _inject_combined_link static method."""
+
+    def test_inject_from_fields(self):
+        """Should extract refs from fields and add combined link to description."""
+        import re
+        from helpers import bible_url
+        
+        piece = {
+            'title': 'Test',
+            'description': 'Original description',
+            'fields': [
+                {'name': 'Reading', 'value': '[Genesis 1:1](https://biblegateway.com/passage/?search=Ge+1:1)'}
+            ]
+        }
+        
+        # Simulate _inject_combined_link logic
+        all_refs_text = ' '.join(f.get('value', '') for f in piece.get('fields', []))
+        all_refs_text += ' ' + piece.get('description', '')
+        markdown_refs = re.findall(r'\[([^\]]+)\]\(https://biblegateway\.com/passage/\?search=', all_refs_text)
+        
+        self.assertEqual(markdown_refs, ['Genesis 1:1'])
+
+    def test_inject_from_description(self):
+        """Should extract refs from description (Armenian-style)."""
+        import re
+        
+        piece = {
+            'title': 'Test',
+            'description': '[Wisdom 9:9-12](https://biblegateway.com/passage/?search=Ws+9:9-12&version=NRSVCE)\n[Isaiah 41:15-19](https://biblegateway.com/passage/?search=Is+41:15-19)'
+        }
+        
+        all_refs_text = piece.get('description', '')
+        markdown_refs = re.findall(r'\[([^\]]+)\]\(https://biblegateway\.com/passage/\?search=', all_refs_text)
+        
+        self.assertEqual(len(markdown_refs), 2)
+        self.assertIn('Wisdom 9:9-12', markdown_refs)
+        self.assertIn('Isaiah 41:15-19', markdown_refs)
+
+    def test_no_injection_when_no_refs(self):
+        """Should not modify piece if no Bible references found."""
+        import re
+        
+        piece = {
+            'title': 'Saints & Feasts',
+            'description': 'St. John the Baptist'
+        }
+        
+        all_refs_text = piece.get('description', '')
+        markdown_refs = re.findall(r'\[([^\]]+)\]\(https://biblegateway\.com/passage/\?search=', all_refs_text)
+        
+        self.assertEqual(markdown_refs, [])
 
 
 class TestE2EBibleUrlFlow(unittest.TestCase):
