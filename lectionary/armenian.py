@@ -1,3 +1,4 @@
+import datetime
 import re
 
 import requests
@@ -52,6 +53,7 @@ class ArmenianLectionary(Lectionary):
         self.notes_url = None
         self.description = ""
         self.synaxarium = ""
+        self.using_previous_day = False
         self.regenerate()
 
     def clear(self) -> None:
@@ -62,15 +64,29 @@ class ArmenianLectionary(Lectionary):
         self.notes_url = None
         self.description = ""
         self.synaxarium = ""
+        self.using_previous_day = False
 
     def regenerate(self) -> None:
         """
         Regenerate and fetch all lectionary data for today, including readings and synaxarium.
+        Falls back to yesterday's readings if today's aren't available yet.
         """
         super().regenerate()  # Update last_regeneration timestamp
+        self.using_previous_day = False
+        
+        # Try today first
         self.url = self.today.strftime(ARMENIAN_LECTIONARY_URL_TEMPLATE).lower()
-
         initial_soup = self._fetch_initial_soup()
+        
+        # If today fails, try yesterday (one day fallback only)
+        if initial_soup is None:
+            yesterday = self.today - datetime.timedelta(days=1)
+            self.url = yesterday.strftime(ARMENIAN_LECTIONARY_URL_TEMPLATE).lower()
+            _logger.info(f'Trying previous day for Armenian lectionary: {self.url}')
+            initial_soup = self._fetch_initial_soup()
+            if initial_soup is not None:
+                self.using_previous_day = True
+        
         if initial_soup is None:
             return
 
@@ -235,8 +251,6 @@ class ArmenianLectionary(Lectionary):
         Get the daily synaxarium link from the Armenian Church calendar website.
         Returns the link as a string, or an empty string if not found.
         """
-        import datetime
-
         today = datetime.date.today()
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -287,12 +301,16 @@ class ArmenianLectionary(Lectionary):
                 }
             ]
 
+        footer_text = "Copyright © VEMKAR."
+        if self.using_previous_day:
+            footer_text = "⚠️ Showing previous day's readings (today's not yet posted)\n" + footer_text
+        
         json = [
             {
                 "title": self.title + "\n" + self.subtitle,
                 "color": 0xCA0000 if self.synaxarium else 0x202225,
                 "description": self._build_description(),
-                "footer": {"text": "Copyright © VEMKAR."},
+                "footer": {"text": footer_text},
                 "author": {"name": "Armenian Lectionary", "url": self.url},
             }
         ]
