@@ -1,7 +1,7 @@
 from helpers import bible_url
 from helpers import date_expand
 from helpers.logger import log
-from lectionary.lectionary import Lectionary
+from lectionary.base import Lectionary
 
 
 class OrthodoxGreekLectionary(Lectionary):

@@ -1,7 +1,7 @@
 import re
 
 from helpers import bible_url, date_expand
-from lectionary.lectionary import Lectionary
+from lectionary.base import Lectionary
 
 
 class OrthodoxAmericanLectionary(Lectionary):

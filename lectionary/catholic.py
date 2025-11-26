@@ -4,9 +4,12 @@ import re
 import requests
 from bs4 import BeautifulSoup
 
-from helpers import bible_url, date_expand, logger
+from helpers import bible_url, date_expand
+from helpers.bible_reference import normalize_usccb_reference
+from helpers.logger import get_logger
+from lectionary.base import Lectionary
 
-logger = logger.get_logger(__name__)
+_logger = get_logger(__name__)
 
 
 class CatholicPage:
@@ -50,7 +53,7 @@ class CatholicPage:
             if r.status_code == 200:
                 return r
         except requests.exceptions.RequestException as e:
-            logger.error(f'Failed to make request: {e}', exc_info=True)
+            _logger.error(f'Failed to make request: {e}', exc_info=True)
             return None
 
     def parse_source_text(self, source_text):
@@ -90,115 +93,31 @@ class CatholicPage:
 
     @staticmethod
     def _clean_ref(reference):
-        substitutions = {
-            'GN': 'Genesis',
-            'EX': 'Exodus',
-            'LV': 'Leviticus',
-            'NM': 'Numbers',
-
-            'JDT': 'Judith',  # This gets moved up so the proper substitution is made
-            'DT': 'Deuteronomy',
-
-            'JOS': 'Joshua',
-            'JGS': 'Judges',
-            'RU': 'Ruth',
-            '1 SM': '1 Samuel',
-            '2 SM': '2 Samuel',
-            '1 KGS': '1 Kings',
-            '2 KGS': '2 Kings',
-            '1 CHR': '1 Chronicles',
-            '2 CHR': '2 Chronicles',
-            'EZR': 'Ezra',
-            'NEH': 'Nehemiah',
-
-            'TB': 'Tobit',
-            #           Judith
-            'EST': 'Esther',
-            '1 MC': '1 Maccabees',
-            '2 MC': '2 Maccabees',
-
-            'JB': 'Job',
-            'PS': 'Psalm',
-            'PRV': 'Proverbs',
-            'ECCL': 'Ecclesiastes',
-            'SGS': 'Song of Songs',
-            'WIS': 'Wisdom',
-            'SIR': 'Sirach',
-
-            'IS': 'Isaiah',
-            'JER': 'Jeremiah',
-            'LAM': 'Lamentations',
-            'BAR': 'Baruch',
-            'EZ': 'Ezekiel',
-            'DN': 'Daniel',
-            'HOS': 'Hosea',
-            'JL': 'Joel',
-            'AM': 'Amos',
-            'OB': 'Obadiah',
-            'JON': 'Jonah',
-            'MI': 'Micah',
-            'NA': 'Nahum',
-            'HB': 'Habakkuk',
-            'ZEP': 'Zephaniah',
-            'HG': 'Haggai',
-            'ZEC': 'Zachariah',
-            'MAL': 'Malachi',
-
-            'MT': 'Matthew',
-            'MK': 'Mark',
-            'LK': 'Luke',
-            'JN': 'John',
-
-            'ACTS': 'Acts',
-
-            'ROM': 'Romans',
-            '1 COR': '1 Corinthians',
-            '2 COR': '2 Corinthians',
-            'GAL': 'Galatians',
-            'EPH': 'Ephesians',
-            'PHIL': 'Philippians',
-            'COL': 'Colossians',
-            '1 THES': '1 Thessalonians',
-            '2 THES': '2 Thessalonians',
-            '1 TM': '1 Timothy',
-            '2 TM': '2 Timothy',
-            'TI': 'Titus',
-            'PHLM': 'Philemon',
-            'HEB': 'Hebrews',
-
-            'JAS': 'James',
-            '1 PT': '1 Peter',
-            '2 PT': '2 Peter',
-            '1 JN': '1 John',
-            '2 JN': '2 John',
-            '3 JN': '3 John',
-            'JUDE': 'Jude',
-            'RV': 'Revelation'
-        }
-
-        reference = reference.upper()
-        for original in substitutions.keys():
-            if f'{original} ' in reference:
-                reference = reference.replace(original, substitutions[original])
-                break
-        return reference.title()
+        """Normalize a USCCB Bible reference using the shared helper."""
+        return normalize_usccb_reference(reference)
 
 
-# doesn't implement lectionary.py since it's too unique
-class CatholicLectionary:
+class CatholicLectionary(Lectionary):
+    """
+    Catholic Lectionary implementation.
+    
+    This lectionary is unique in that it uses CatholicPage objects to represent
+    multiple pages of readings, rather than a single list of readings.
+    """
+
     def __init__(self):
-        self.last_regeneration = datetime.datetime.min
-        self.today = datetime.date.today()
+        super().__init__()  # Initialize base class attributes (today, url, ready, last_regeneration, etc.)
         self.permalink = self.today.strftime('https://bible.usccb.org/bible/readings/%m%d%y.cfm')
+        self.url = self.permalink  # Set base class url to permalink for consistency
         self.pages = []
-        self.color = self.get_color()
-        self.ready = self.regenerate()
+        self.color = 0
+        self.regenerate()
 
     def clear(self):
-        self.today = None
+        super().clear()  # Clear base class attributes
         self.color = 0
         self.pages = []
-        self.ready = False
+        self.permalink = ''
 
     def get_color(self):
         color_mappings = {
@@ -223,24 +142,35 @@ class CatholicLectionary:
             return color_mappings['green']
 
     def regenerate(self):
-        self.last_regeneration = datetime.datetime.now()  # Update last_regeneration timestamp
-        self.today = datetime.date.today()
+        super().regenerate()  # Update last_regeneration and today from base class
         self.permalink = self.today.strftime('https://bible.usccb.org/bible/readings/%m%d%y.cfm')
+        self.url = self.permalink  # Keep base class url in sync
         self.pages = []
 
         page_content = self._fetch_page_content(self.permalink)
         if page_content is None:
             self.clear()
-            return False
+            return
 
         if self._append_page_if_ready(page_content):
             self._append_linked_pages(page_content)
             self.color = self.get_color()
             self.ready = True
-            return True
         else:
             self.clear()
-            return False
+
+    # Abstract method implementations (Catholic lectionary uses pages instead of these)
+    def extract_title(self, soup):
+        pass  # Title is extracted per-page in CatholicPage
+
+    def extract_subtitle(self, soup):
+        pass  # Subtitle is extracted per-page in CatholicPage
+
+    def extract_readings(self, soup):
+        pass  # Readings are extracted per-page in CatholicPage
+
+    def extract_synaxarium(self, soup):
+        pass  # Not used by Catholic lectionary
 
     @staticmethod
     def _fetch_page_content(url):

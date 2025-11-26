@@ -1,9 +1,10 @@
 import re
 
-from helpers import bible_url, logger
-from lectionary.lectionary import Lectionary
+from helpers import bible_url
+from helpers.logger import get_logger
+from lectionary.base import Lectionary
 
-logger = logger.get_logger(__name__)
+_logger = get_logger(__name__)
 
 
 class OrthodoxRussianLectionary(Lectionary):
@@ -39,7 +40,7 @@ class OrthodoxRussianLectionary(Lectionary):
                 self.troparion = self._extract_troparion(soup)
                 self.ready = True
             except Exception as e:
-                logger.error(f"Failed to parse the webpage: {e}", exc_info=True)
+                _logger.error(f"Failed to parse the webpage: {e}", exc_info=True)
 
     def _build_calendar_url(self):
         url = f'{self.BASE_URL}' \
@@ -68,7 +69,7 @@ class OrthodoxRussianLectionary(Lectionary):
     def extract_readings(self, soup):
         readings_elements = soup.select('span[class="normaltext"]')
         if len(readings_elements) < 2:  # make sure there are at least two elements
-            logger.error("Couldn't find the readings on the page")
+            _logger.error("Couldn't find the readings on the page")
             return None
         readings_element = readings_elements[1]  # it seems the readings are in the second 'normaltext' span
         readings = [str(item) for item in readings_element.contents]

@@ -5,48 +5,40 @@ import typing
 import discord
 from discord.ext import commands, tasks
 
-from helpers import logger
-from helpers.bot_database import db
-from lectionary.armenian import ArmenianLectionary
-from lectionary.bcp import BookOfCommonPrayer
-from lectionary.catholic import CatholicLectionary
-from lectionary.orthodox_american import OrthodoxAmericanLectionary
-from lectionary.orthodox_coptic import OrthodoxCopticLectionary
-from lectionary.orthodox_greek import OrthodoxGreekLectionary
-from lectionary.orthodox_russian import OrthodoxRussianLectionary
-from lectionary.rcl import RevisedCommonLectionary
+from helpers.logger import get_logger
+from helpers.repositories import (
+    init_database_schema,
+    GuildSettingsRepository,
+    SubscriptionsRepository,
+)
+from lectionary.registry import registry
 
-logger = logger.get_logger(__name__)
+_logger = get_logger(__name__)
 
 
-class Lectionary(commands.Cog):
+class LectionaryCog(commands.Cog):
     MAX_SUBSCRIPTIONS = 10
     EARLIEST_TIME = 0
     LATEST_TIME = 23
 
     def __init__(self, bot):
         self.last_fulfill = None
-        self.lectionaries = None
-        self.lectionary_names = None
         self.bot = bot
 
-        self._init_lectionaries()
-
         self._init_sql_commands()
-
         self._start_event_loop()
 
-        logger.debug(f'Bot booted. Will not fulfill subscriptions for {self.last_fulfill}:00 GMT or prior.')
+        _logger.debug(f'Bot booted. Will not fulfill subscriptions for {self.last_fulfill}:00 GMT or prior.')
 
     @commands.Cog.listener()
     async def on_ready(self):
-        logger.info(f'Bot is ready. Logged in as {self.bot.user.name}')
-        logger.info(f'Guilds: {", ".join([g.name for g in self.bot.guilds])}')
-        logger.info(f'Commands: {", ".join([c.name for c in self.bot.commands])}')
+        _logger.info(f'Bot is ready. Logged in as {self.bot.user.name}')
+        _logger.info(f'Guilds: {", ".join([g.name for g in self.bot.guilds])}')
+        _logger.info(f'Commands: {", ".join([c.name for c in self.bot.commands])}')
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
-        logger.error(f'Error in {ctx.command}: {str(error)}')
+        _logger.error(f'Error in {ctx.command}: {str(error)}')
     
     def _start_event_loop(self):
         # Start up the event loop
@@ -55,87 +47,17 @@ class Lectionary(commands.Cog):
 
     @staticmethod
     def _init_sql_commands():
-        logger.debug('Initial data fetch')
-        # Initialize the database if it's not ready
-        conn = db.get_conn()
-        c = conn.cursor()
-        try:
-            # Guild settings table
-            c.execute('''
-                CREATE TABLE IF NOT EXISTS GuildSettings (
-                    guild_id BIGINT NOT NULL,
-                    time     BIGINT NOT NULL,
-                    PRIMARY KEY (guild_id)
-                )
-            ''')
-            # Subscriptions table
-            c.execute('''
-                CREATE TABLE IF NOT EXISTS Subscriptions (
-                    guild_id   BIGINT NOT NULL,
-                    channel_id BIGINT NOT NULL,
-                    sub_type   BIGINT NOT NULL,
-                    FOREIGN KEY (guild_id) REFERENCES GuildSettings(guild_id) ON DELETE CASCADE
-                )
-            ''')
-            conn.commit()
-        except Exception as e:
-            conn.rollback()
-            raise e
-
-        finally:
-            db.put_conn(conn)
-
-    def _init_lectionaries(self):
-        # This list is for indexing-display purposes
-        self.lectionary_names = [
-            'armenian',
-            'book of common prayer',
-            'catholic',
-            'america orthodox',
-            'coptic orthodox',
-            # 'greek orthodox',
-            'russian orthodox',
-            # 'revised common'
-        ]
-        # Lectionary Objects
-        self.lectionaries = [
-            ArmenianLectionary(),
-            BookOfCommonPrayer(),
-            CatholicLectionary(),
-            OrthodoxAmericanLectionary(),
-            OrthodoxCopticLectionary(),
-            # OrthodoxGreekLectionary(),
-            OrthodoxRussianLectionary(),
-            # RevisedCommonLectionary()
-        ]
+        """Initialize database schema using the repository."""
+        init_database_schema()
 
     def regenerate_all(self):
-        for index in range(len(self.lectionaries)):
-            self._get_or_regenerate_lectionary(index)
-        logger.debug('Refetched lectionary data')
+        """Regenerate all lectionaries using the registry."""
+        registry.regenerate_all()
 
     @staticmethod
     def _index_lectionary_name(lectionary):
-        """
-        Given a lectionary name (str), returns its index number (int).
-        If the name is invalid, -1 is returned.
-        """
-
-        indexes = {
-            'armenian': 0, 'a': 0,
-            'book of common prayer': 1, 'bcp': 1, 'b': 1,
-            'catholic': 2, 'c': 2,
-            'american orthodox': 3, 'ao': 3, "oca": 3,
-            'coptic orthodox': 4, 'co': 4,
-            # 'greek orthodox': 5, 'go': 5,
-            'russian orthodox': 6, 'ro': 6,
-            # 'revised common': 7, 'rcl': 7, 'r': 7
-        }
-
-        if lectionary in indexes:
-            return indexes[lectionary]
-        else:
-            return -1
+        """Get lectionary index from name using the registry."""
+        return registry.get_index(lectionary)
 
     '''LECTIONARY REQUEST COMMAND'''
 
@@ -158,7 +80,7 @@ class Lectionary(commands.Cog):
         index = self._index_lectionary_name(lec)
 
         if index > -1:
-            lectionary = self._get_or_regenerate_lectionary(index)
+            lectionary = registry.get(index)
             if lectionary is None:
                 await ctx.message.add_reaction('❌')
                 await ctx.send("Lectionary failed. Please report to the bot owner (@Tarkavor) for assistance.")
@@ -183,16 +105,6 @@ class Lectionary(commands.Cog):
             return None
         return ' '.join(lec).lower()
 
-    def _get_or_regenerate_lectionary(self, index):
-        if not self.lectionaries[index].ready or (
-                datetime.datetime.now() - self.lectionaries[index].last_regeneration
-        ) > datetime.timedelta(hours=1):
-            self.lectionaries[index].regenerate()
-            if not self.lectionaries[index].ready:
-                logger.error(f'Lectionary {type(self.lectionaries[index])} not regenerated correctly.', exc_info=True)
-                return None
-        return self.lectionaries[index]
-
     @classmethod
     def _truncate_title(cls, title, max_length=256):
         if len(title) <= max_length:
@@ -213,7 +125,7 @@ class Lectionary(commands.Cog):
         except Exception as e:
             error_msg = f"Error: please contact <@239877908435435520> for assistance\nDetails: {str(e)}"
             await ctx.send(error_msg)
-            logger.error(f"Error in send_lectionary: {str(e)}", exc_info=True)
+            _logger.error(f"Error in send_lectionary: {str(e)}", exc_info=True)
     
     '''SUBSCRIPTION COMMANDS'''
 
@@ -262,21 +174,8 @@ class Lectionary(commands.Cog):
 
     @staticmethod
     def _update_guild_settings(guild_id, time):
-        conn = db.get_conn()
-        c = conn.cursor()
-        try:
-            c.execute('SELECT * FROM GuildSettings WHERE guild_id = %s', (guild_id,))
-            setting = c.fetchone()
-            if setting:
-                c.execute('UPDATE GuildSettings SET time = %s WHERE guild_id = %s', (time, guild_id))
-            else:
-                c.execute('INSERT INTO GuildSettings VALUES (%s, %s)', (guild_id, time))
-            conn.commit()
-        except Exception as e:
-            conn.rollback()
-            raise e
-        finally:
-            db.put_conn(conn)
+        """Update or create guild settings using the repository."""
+        GuildSettingsRepository.set_time(guild_id, time)
 
     @commands.command(aliases=['sub'])
     @commands.has_permissions(manage_messages=True)
@@ -305,93 +204,55 @@ class Lectionary(commands.Cog):
             return ctx.channel.id
 
     def _check_or_create_guild(self, guild_id):
-        conn = db.get_conn()
-        c = conn.cursor()
-        try:
-            # Check to see if the guild has a settings entry yet
-            c.execute('SELECT * FROM GuildSettings WHERE guild_id = %s', (guild_id,))
-            row = c.fetchone()
-            if not row:
-                # If not, create a default entry for the guild
-                c.execute('INSERT INTO GuildSettings VALUES (%s, %s)', (guild_id, self.EARLIEST_TIME))
-            conn.commit()
-
-        except Exception as e:
-            conn.rollback()
-            raise e
-
-        finally:
-            db.put_conn(conn)
+        """Ensure guild has settings entry using the repository."""
+        GuildSettingsRepository.ensure_exists(guild_id, self.EARLIEST_TIME)
 
     async def _check_subscription_and_add(self, ctx, channel_id, sub_type, guild_id):
-        conn = db.get_conn()
-        c = conn.cursor()
-        try:
-            # Check if the given channel is already subscribed to the given lectionary
-            c.execute('SELECT * FROM Subscriptions WHERE channel_id=%s AND sub_type=%s', (channel_id, sub_type))
-            row = c.fetchone()
-            sub_name = self.lectionary_names[sub_type].title()
-            if row:
-                await ctx.send(f'<#{channel_id}> is already subscribed to the {sub_name} lectionary.')
-            else:
-                # Check to make sure there aren't too many subscriptions already
-                c.execute('SELECT COUNT(guild_id) FROM Subscriptions WHERE guild_id=%s', (guild_id,))
-                if c.fetchone()[0] >= self.MAX_SUBSCRIPTIONS:
-                    await ctx.send(f'You can\'t have more than {self.MAX_SUBSCRIPTIONS} subscriptions per guild.')
-                else:
-                    c.execute('INSERT INTO Subscriptions VALUES (%s, %s, %s)', (guild_id, channel_id, sub_type))
-                    conn.commit()
-                    await ctx.send(f'<#{channel_id}> has been subscribed to the {sub_name} lectionary.')
-            conn.commit()
-
-        except Exception as e:
-            conn.rollback()
-            raise e
-
-        finally:
-            db.put_conn(conn)
+        """Check and add a subscription using the repository."""
+        sub_name = registry.get_name(sub_type).title()
+        
+        # Check if already subscribed
+        if SubscriptionsRepository.exists(channel_id, sub_type):
+            await ctx.send(f'<#{channel_id}> is already subscribed to the {sub_name} lectionary.')
+            return
+        
+        # Check subscription limit
+        if SubscriptionsRepository.count_for_guild(guild_id) >= self.MAX_SUBSCRIPTIONS:
+            await ctx.send(f'You can\'t have more than {self.MAX_SUBSCRIPTIONS} subscriptions per guild.')
+            return
+        
+        # Add subscription
+        SubscriptionsRepository.add(guild_id, channel_id, sub_type)
+        await ctx.send(f'<#{channel_id}> has been subscribed to the {sub_name} lectionary.')
 
     @commands.command(aliases=['unsub'])
     @commands.has_permissions(manage_messages=True)
     async def unsubscribe(self, ctx, channel: discord.TextChannel = None, lectionary: str = None):
-        conn = db.get_conn()
-        c = conn.cursor()
+        """Unsubscribe from lectionaries using the repository."""
+        if (channel is None) and (lectionary is None):
+            # Remove all the guild's subscriptions (cascades via foreign key)
+            GuildSettingsRepository.delete(ctx.guild.id)
+            await ctx.send(f'All subscriptions for {ctx.guild.name} have been removed.')
 
-        try:
-            if (channel is None) and (lectionary is None):
-                # Remove all the guild's subscriptions
-                c.execute('DELETE FROM GuildSettings WHERE guild_id = %s', (ctx.guild.id,))
-                await ctx.send(f'All subscriptions for {ctx.guild.name} have been removed.')
+        elif isinstance(channel, discord.TextChannel):
+            channel_id = channel.id
 
-            elif isinstance(channel, discord.TextChannel):
-                # Remove all subscriptions for the given channel
-                channel_id = channel.id
-
-                if lectionary is None:
-                    c.execute('DELETE FROM Subscriptions WHERE channel_id = %s', (channel_id,))
-                    await ctx.send(f'<#{channel_id}> has been unsubscribed from all lectionaries.')
-                else:
-                    sub_type = self._index_lectionary_name(lectionary)
-
-                    if sub_type == -1:
-                        await ctx.send('You didn\'t specify a valid lectionary option.')
-                        return
-
-                    c.execute('DELETE FROM Subscriptions WHERE channel_id = %s AND sub_type = %s',
-                              (channel_id, sub_type))
-                    await ctx.send(
-                        f'<#{channel_id}> has been unsubscribed from the {self.lectionary_names[sub_type].title()} lectionary.')
-
+            if lectionary is None:
+                SubscriptionsRepository.delete_for_channel(channel_id)
+                await ctx.send(f'<#{channel_id}> has been unsubscribed from all lectionaries.')
             else:
-                await ctx.send('You didn\'t specify a valid unsubscription option.')
-            conn.commit()
+                sub_type = self._index_lectionary_name(lectionary)
 
-        except Exception as e:
-            conn.rollback()
-            raise e
+                if sub_type == -1:
+                    await ctx.send('You didn\'t specify a valid lectionary option.')
+                    return
 
-        finally:
-            db.put_conn(conn)
+                SubscriptionsRepository.delete_for_channel(channel_id, sub_type)
+                await ctx.send(
+                    f'<#{channel_id}> has been unsubscribed from the {registry.get_name(sub_type).title()} lectionary.')
+
+        else:
+            await ctx.send('You didn\'t specify a valid unsubscription option.')
 
     def _build_subscriptions_list(self, ctx):
         """
@@ -403,28 +264,13 @@ class Lectionary(commands.Cog):
         return embed
 
     def _get_subscriptions(self, ctx):
-        conn = db.get_conn()
-        c = conn.cursor()
-        try:
-            c.execute('SELECT time FROM GuildSettings WHERE guild_id = %s', (ctx.guild.id,))
-            time = c.fetchone()
-            if not time:
-                time = self.EARLIEST_TIME
-                c.execute('INSERT INTO GuildSettings VALUES (%s, %s)', (ctx.guild.id, time))
-                conn.commit()
-
-            c.execute('SELECT * FROM Subscriptions WHERE guild_id = %s', (ctx.guild.id,))
-            subscriptions = c.fetchall()
-            conn.commit()
-
-        except Exception as e:
-            conn.rollback()
-            # You should log the exception here
-            raise e
-
-        finally:
-            db.put_conn(conn)
-
+        """Get subscriptions for a guild using the repository."""
+        time = GuildSettingsRepository.get_time(ctx.guild.id)
+        if time is None:
+            time = self.EARLIEST_TIME
+            GuildSettingsRepository.ensure_exists(ctx.guild.id, time)
+        
+        subscriptions = SubscriptionsRepository.get_for_guild(ctx.guild.id)
         return time, subscriptions
 
     def _create_embed(self, ctx, time, subscriptions):
@@ -433,7 +279,7 @@ class Lectionary(commands.Cog):
             embed.description = ''
             for subscription in subscriptions:
                 channel_id = subscription[1]
-                sub_name = self.lectionary_names[subscription[2]].title()
+                sub_name = registry.get_name(subscription[2]).title()
                 embed.description += f'\n<#{channel_id}> - {sub_name} lectionary'
 
             embed.set_footer(text=f'(Daily @ {time}:00 GMT)')
@@ -454,16 +300,16 @@ class Lectionary(commands.Cog):
         try:
             self.fulfill_subscriptions.stop()
             await ctx.message.add_reaction('✅')
-            logger.debug('Shutdown request, logging out')
+            _logger.debug('Shutdown request, logging out')
             await ctx.bot.close()
         except Exception as e:
-            logger.debug('An error occurred during shutdown: ' + str(e))
+            _logger.debug('An error occurred during shutdown: ' + str(e))
             await ctx.send(f'An error occurred during shutdown: {e}')
 
     @commands.command()
     @commands.is_owner()
     async def push(self, ctx, current_hour: int = datetime.datetime.utcnow().hour):
-        logger.debug(f'Manual subscription push requested for {current_hour}:00 GMT')
+        _logger.debug(f'Manual subscription push requested for {current_hour}:00 GMT')
 
         try:
             if self.EARLIEST_TIME <= current_hour <= self.LATEST_TIME:
@@ -474,9 +320,9 @@ class Lectionary(commands.Cog):
                 await self.push_subscriptions(current_hour)
             else:
                 await ctx.message.add_reaction('❌')
-                logger.debug(f'Push failed. current_hour={current_hour} is outside the acceptable range.')
+                _logger.debug(f'Push failed. current_hour={current_hour} is outside the acceptable range.')
         except Exception as e:
-            logger.debug(f'An error occurred during push: {e}')
+            _logger.debug(f'An error occurred during push: {e}')
             await ctx.send(f'An error occurred during push: {e}')
 
     '''SUBSCRIPTIONS TASK LOOP'''
@@ -487,16 +333,16 @@ class Lectionary(commands.Cog):
         current_hour = datetime.datetime.utcnow().hour
 
         if (self.EARLIEST_TIME <= current_hour <= self.LATEST_TIME) and (self.last_fulfill != current_hour):
-            logger.debug(f"Starting to fulfill subscriptions for {current_hour} hour")
+            _logger.debug(f"Starting to fulfill subscriptions for {current_hour} hour")
             # Make sure the lectionary embeds are updated for the day
             self.regenerate_all()
 
             try:
                 await self.push_subscriptions(current_hour)
                 self.last_fulfill = current_hour
-                logger.debug(f"Successfully fulfilled subscriptions for {current_hour} hour")
+                _logger.debug(f"Successfully fulfilled subscriptions for {current_hour} hour")
             except Exception as e:
-                logger.debug(f"Error during fulfilling subscriptions for {current_hour} hour: {e}")
+                _logger.debug(f"Error during fulfilling subscriptions for {current_hour} hour: {e}")
 
     @fulfill_subscriptions.before_loop
     async def before_fulfill_subscriptions(self):
@@ -506,91 +352,50 @@ class Lectionary(commands.Cog):
 
     async def _remove_deleted_guilds(self):
         """
-        Helper method to purge the settings of deleted guilds from
-        the database. The ON CASCADE DELETE option in the database
-        also makes this wipe the subscriptions automatically.
+        Purge settings of deleted guilds using the repository.
+        The ON CASCADE DELETE option also wipes subscriptions automatically.
         """
-        conn = db.get_conn()
-        c = conn.cursor()
-        try:
-            c.execute('SELECT guild_id FROM GuildSettings')
-            guild_ids = [item[0] for item in c.fetchall()]
-
-            total = len(guild_ids)
-
-            logger.debug(f"Checking {total} guilds for deletion")
-
-            deleted_guild_ids = [guild_id for guild_id in guild_ids if not self.bot.get_guild(guild_id)]
-
-            count = len(deleted_guild_ids)
-
-            if deleted_guild_ids:
-                # Create query for batch deletion
-                query = "DELETE FROM GuildSettings WHERE guild_id IN %s"
-                c.execute(query, (tuple(deleted_guild_ids),))
-
-                conn.commit()
-
-                logger.debug(f'Purged {count} out of {total} guilds')
-
-        except Exception as e:
-            conn.rollback()
-            logger.debug(f"Error during guild purge: {e}")
-            raise e
-
-        finally:
-            db.put_conn(conn)
+        guild_ids = GuildSettingsRepository.get_all_guild_ids()
+        total = len(guild_ids)
+        
+        _logger.debug(f"Checking {total} guilds for deletion")
+        
+        deleted_guild_ids = [gid for gid in guild_ids if not self.bot.get_guild(gid)]
+        
+        if deleted_guild_ids:
+            count = GuildSettingsRepository.delete_many(deleted_guild_ids)
+            _logger.debug(f'Purged {count} out of {total} guilds')
 
     async def push_subscriptions(self, hour):
+        """Push lectionary embeds to all channels subscribed for this hour."""
         await self._remove_deleted_guilds()
-        conn = db.get_conn()
-        c = conn.cursor()
-        try:
-            # Get all subscriptions for the guilds that have their time preference
-            # set to the given hour
-            c.execute('''
-                SELECT Subscriptions.channel_id, Subscriptions.sub_type
-                FROM Subscriptions
-                INNER JOIN GuildSettings
-                ON Subscriptions.guild_id = GuildSettings.guild_id
-                WHERE GuildSettings.time = %s
-            ''', (hour,))
+        
+        subscriptions = SubscriptionsRepository.get_for_hour(hour)
+        total_subs = len(subscriptions)
+        successful_subs = 0
 
-            subscriptions = c.fetchall()
-            total_subs = len(subscriptions)
-            successful_subs = 0
+        if total_subs > 0:
+            _logger.debug(f"Preparing to push {total_subs} subscription(s) for {hour}:00 GMT")
 
-            if total_subs > 0:
-                logger.debug(f"Preparing to push {total_subs} subscription(s) for {hour}:00 GMT")
+        # Each subscription is a tuple: (channel_id, sub_type)
+        for channel_id, sub_type in subscriptions:
+            channel = self.bot.get_channel(channel_id)
 
-            # Each subscription is a tuple: (channel_id, sub_type)
-            for subscription in subscriptions:
-                channel_id = subscription[0]
-                sub_type = subscription[1]
-                channel = self.bot.get_channel(channel_id)
-
-                if channel:
-                    feed = self.lectionaries[sub_type].build_json()
+            if channel:
+                lec = registry.get(sub_type)
+                if lec:
+                    feed = lec.build_json()
                     for item in feed:
                         await channel.send(embed=discord.Embed.from_dict(item))
                     successful_subs += 1
-                else:
-                    c.execute('DELETE FROM Subscriptions WHERE channel_id = %s', (channel_id,))
+            else:
+                # Channel was deleted, remove subscription
+                SubscriptionsRepository.delete_by_channel_id(channel_id)
 
-            conn.commit()
-
-            if successful_subs > 0:
-                logger.debug(
-                    f'Successfully pushed {successful_subs} out of {total_subs} subscriptions for {hour}:00 GMT')
-
-        except Exception as e:
-            conn.rollback()
-            logger.debug(f"Error while pushing subscriptions for {hour}:00 GMT: {e}")
-            raise e
-
-        finally:
-            db.put_conn(conn)
+        if successful_subs > 0:
+            _logger.debug(
+                f'Successfully pushed {successful_subs} out of {total_subs} subscriptions for {hour}:00 GMT')
 
 
 async def setup(bot):
-    await bot.add_cog(Lectionary(bot))
+    await bot.add_cog(LectionaryCog(bot))

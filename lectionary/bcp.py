@@ -1,5 +1,5 @@
 from helpers import bible_url, date_expand
-from .lectionary import Lectionary
+from .base import Lectionary
 
 
 class BookOfCommonPrayer(Lectionary):
