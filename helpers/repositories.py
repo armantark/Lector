@@ -40,7 +40,7 @@ def init_database_schema():
     Initialize database tables if they don't exist.
     
     Creates:
-        - GuildSettings: Stores per-guild time preferences
+        - GuildSettings: Stores per-guild time preferences and combined_links setting
         - Subscriptions: Stores channel subscriptions to lectionaries
     """
     _logger.debug('Initializing database schema')
@@ -62,6 +62,23 @@ def init_database_schema():
                 FOREIGN KEY (guild_id) REFERENCES GuildSettings(guild_id) ON DELETE CASCADE
             )
         ''')
+    # Add combined_links column if it doesn't exist (migration for existing databases)
+    # Use a separate transaction to avoid PostgreSQL transaction abort issues
+    try:
+        with get_cursor() as c:
+            # Check if column exists first (PostgreSQL-compatible)
+            c.execute('''
+                SELECT column_name FROM information_schema.columns 
+                WHERE table_name = 'guildsettings' AND column_name = 'combined_links'
+            ''')
+            if not c.fetchone():
+                c.execute('''
+                    ALTER TABLE GuildSettings 
+                    ADD COLUMN combined_links BOOLEAN DEFAULT TRUE
+                ''')
+                _logger.debug('Added combined_links column to GuildSettings')
+    except Exception as e:
+        _logger.debug(f'Migration check for combined_links: {e}')
 
 
 class GuildSettingsRepository:
@@ -114,6 +131,40 @@ class GuildSettingsRepository:
         with get_cursor() as c:
             c.execute("DELETE FROM GuildSettings WHERE guild_id IN %s", (tuple(guild_ids),))
             return len(guild_ids)
+    
+    @staticmethod
+    def get_combined_links(guild_id: int) -> bool:
+        """
+        Get the combined_links setting for a guild.
+        
+        Returns:
+            True if combined links are enabled (default), False if disabled.
+        """
+        with get_cursor() as c:
+            c.execute('SELECT combined_links FROM GuildSettings WHERE guild_id = %s', (guild_id,))
+            row = c.fetchone()
+            # Default to True if not set or guild doesn't exist
+            if row is None or row[0] is None:
+                return True
+            return bool(row[0])
+    
+    @staticmethod
+    def set_combined_links(guild_id: int, enabled: bool) -> None:
+        """
+        Set the combined_links setting for a guild.
+        
+        Args:
+            guild_id: The guild ID
+            enabled: True to enable combined links, False to disable
+        """
+        with get_cursor() as c:
+            c.execute('SELECT * FROM GuildSettings WHERE guild_id = %s', (guild_id,))
+            if c.fetchone():
+                c.execute('UPDATE GuildSettings SET combined_links = %s WHERE guild_id = %s', 
+                          (enabled, guild_id))
+            else:
+                c.execute('INSERT INTO GuildSettings (guild_id, time, combined_links) VALUES (%s, %s, %s)', 
+                          (guild_id, 0, enabled))
 
 
 class SubscriptionsRepository:
@@ -132,16 +183,17 @@ class SubscriptionsRepository:
             return c.fetchall()
     
     @staticmethod
-    def get_for_hour(hour: int) -> List[Tuple[int, int]]:
+    def get_for_hour(hour: int) -> List[Tuple[int, int, bool]]:
         """
         Get all subscriptions scheduled for a specific hour.
         
         Returns:
-            List of tuples: (channel_id, sub_type)
+            List of tuples: (channel_id, sub_type, combined_links)
         """
         with get_cursor() as c:
             c.execute('''
-                SELECT Subscriptions.channel_id, Subscriptions.sub_type
+                SELECT Subscriptions.channel_id, Subscriptions.sub_type, 
+                       COALESCE(GuildSettings.combined_links, TRUE)
                 FROM Subscriptions
                 INNER JOIN GuildSettings
                 ON Subscriptions.guild_id = GuildSettings.guild_id

@@ -11,6 +11,7 @@ from helpers.repositories import (
     GuildSettingsRepository,
     SubscriptionsRepository,
 )
+from helpers import bible_url
 from lectionary.registry import registry
 
 _logger = get_logger(__name__)
@@ -39,6 +40,9 @@ class LectionaryCog(commands.Cog):
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
         _logger.error(f'Error in {ctx.command}: {str(error)}')
+        # Send permission errors to user
+        if isinstance(error, commands.MissingPermissions):
+            await ctx.send(f'You need the following permission(s): {", ".join(error.missing_permissions)}')
     
     def _start_event_loop(self):
         # Start up the event loop
@@ -105,8 +109,8 @@ class LectionaryCog(commands.Cog):
             return None
         return ' '.join(lec).lower()
 
-    @classmethod
-    def _truncate_title(cls, title, max_length=256):
+    @staticmethod
+    def _truncate_title(title, max_length=256):
         if len(title) <= max_length:
             return title
         
@@ -115,12 +119,70 @@ class LectionaryCog(commands.Cog):
         truncated_length = max_length - suffix_length
         return f"{title[:truncated_length]}{suffix}"
 
-    @classmethod
-    async def send_lectionary(cls, ctx, lectionary):
+    @staticmethod
+    def _inject_combined_link(piece):
+        """
+        Inject a combined Bible Gateway link into an embed piece.
+        
+        Extracts all Bible references from the fields and/or description
+        and adds a combined link at the top of the description.
+        """
+        # Collect text from both fields and description
+        all_refs_text = ''
+        
+        # Check fields if present
+        if 'fields' in piece:
+            all_refs_text += ' '.join(field.get('value', '') for field in piece['fields'])
+        
+        # Also check description (some lectionaries like Armenian put readings here)
+        if 'description' in piece:
+            all_refs_text += ' ' + piece.get('description', '')
+        
+        if not all_refs_text.strip():
+            return piece
+        
+        # Extract references from markdown links: [Reference](url)
+        markdown_refs = re.findall(r'\[([^\]]+)\]\(https://biblegateway\.com/passage/\?search=', all_refs_text)
+        
+        if not markdown_refs:
+            return piece
+        
+        # Build combined URL from the extracted references
+        combined_link = bible_url.build_combined_url(markdown_refs, "Read all on Bible Gateway")
+        
+        if combined_link:
+            # Append to description with a delimiter
+            current_desc = piece.get('description', '')
+            if current_desc:
+                piece['description'] = f"{current_desc}\n\n─────────────────────\n{combined_link}"
+            else:
+                piece['description'] = combined_link
+        
+        return piece
+
+    async def send_lectionary(self, ctx, lectionary, combined_links_enabled=None):
+        """
+        Send lectionary embeds to a context.
+        
+        Args:
+            ctx: Discord context
+            lectionary: The lectionary object
+            combined_links_enabled: Override for combined links setting. 
+                                   If None, uses guild setting.
+        """
         try:
+            # Determine if combined links should be shown
+            if combined_links_enabled is None:
+                combined_links_enabled = GuildSettingsRepository.get_combined_links(ctx.guild.id)
+            
             for piece in lectionary.build_json():
                 if 'title' in piece and piece['title']:
-                    piece['title'] = cls._truncate_title(piece['title'])
+                    piece['title'] = self._truncate_title(piece['title'])
+                
+                # Inject combined link if enabled
+                if combined_links_enabled:
+                    piece = self._inject_combined_link(piece)
+                
                 await ctx.send(embed=discord.Embed.from_dict(piece))
         except Exception as e:
             error_msg = f"Error: please contact <@239877908435435520> for assistance\nDetails: {str(e)}"
@@ -176,6 +238,50 @@ class LectionaryCog(commands.Cog):
     def _update_guild_settings(guild_id, time):
         """Update or create guild settings using the repository."""
         GuildSettingsRepository.set_time(guild_id, time)
+
+    @commands.command(aliases=['combined'])
+    @commands.has_permissions(administrator=True)
+    async def combinedlinks(self, ctx, toggle: str = None):
+        """
+        Toggle or view the combined Bible Gateway links setting.
+        
+        When enabled (default), lectionary readings include a single link at the end
+        that opens all readings on one Bible Gateway page.
+        
+        Usage:
+            !combinedlinks - Show current setting
+            !combinedlinks on - Enable combined links
+            !combinedlinks off - Disable combined links (show only individual links)
+        """
+        _logger.debug(f"combinedlinks command invoked by {ctx.author} with toggle={toggle}")
+        try:
+            guild_id = ctx.guild.id
+            _logger.debug(f"Guild ID: {guild_id}")
+            
+            if toggle is None:
+                # Show current setting
+                _logger.debug("Fetching current setting...")
+                current = GuildSettingsRepository.get_combined_links(guild_id)
+                _logger.debug(f"Current setting: {current}")
+                status = "enabled" if current else "disabled"
+                await ctx.send(f'Combined Bible Gateway links are currently **{status}** for this server.\n'
+                               f'Use `!combinedlinks on` or `!combinedlinks off` to change.')
+            elif toggle.lower() in ('on', 'true', 'yes', 'enable', '1'):
+                _logger.debug("Setting combined_links to True...")
+                GuildSettingsRepository.set_combined_links(guild_id, True)
+                await ctx.send('Combined Bible Gateway links have been **enabled**. '
+                               'Lectionary readings will now include a "Read all on Bible Gateway" link.')
+            elif toggle.lower() in ('off', 'false', 'no', 'disable', '0'):
+                _logger.debug("Setting combined_links to False...")
+                GuildSettingsRepository.set_combined_links(guild_id, False)
+                await ctx.send('Combined Bible Gateway links have been **disabled**. '
+                               'Lectionary readings will show only individual reading links.')
+            else:
+                await ctx.send('Invalid option. Use `!combinedlinks on` or `!combinedlinks off`.')
+            _logger.debug("combinedlinks command completed successfully")
+        except Exception as e:
+            _logger.error(f"Error in combinedlinks: {str(e)}", exc_info=True)
+            await ctx.send(f'Error: {str(e)}')
 
     @commands.command(aliases=['sub'])
     @commands.has_permissions(manage_messages=True)
@@ -377,8 +483,8 @@ class LectionaryCog(commands.Cog):
         if total_subs > 0:
             _logger.debug(f"Preparing to push {total_subs} subscription(s) for {hour}:00 GMT")
 
-        # Each subscription is a tuple: (channel_id, sub_type)
-        for channel_id, sub_type in subscriptions:
+        # Each subscription is a tuple: (channel_id, sub_type, combined_links)
+        for channel_id, sub_type, combined_links in subscriptions:
             channel = self.bot.get_channel(channel_id)
 
             if channel:
@@ -386,6 +492,13 @@ class LectionaryCog(commands.Cog):
                 if lec:
                     feed = lec.build_json()
                     for item in feed:
+                        if 'title' in item and item['title']:
+                            item['title'] = self._truncate_title(item['title'])
+                        
+                        # Inject combined link if enabled for this guild
+                        if combined_links:
+                            item = self._inject_combined_link(item)
+                        
                         await channel.send(embed=discord.Embed.from_dict(item))
                     successful_subs += 1
             else:

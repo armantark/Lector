@@ -1,9 +1,20 @@
 # Active Context: Lector Bot
 
 ## Current Work Focus
-Major structural refactoring completed. The codebase has been reorganized for better maintainability without changing external behavior.
+Combined Bible Gateway links feature implemented. Users can now click a single link to view all readings on one Bible Gateway page.
 
 ## Recent Changes
+
+### Combined Bible Gateway Links Feature (November 2025)
+- Added `build_combined_url()` and `extract_references()` functions to `helpers/bible_url.py`
+- Added `combined_links` column to `GuildSettings` table (default TRUE)
+- Added `GuildSettingsRepository.get_combined_links()` and `set_combined_links()` methods
+- Added `!combinedlinks` command (requires Administrator permission) - **Note: command not responding, needs debugging**
+- Modified `send_lectionary()` and `push_subscriptions()` to inject combined link at end of embeds
+- Combined link appears with delimiter (`─────────────────────`) before "Read all on Bible Gateway"
+- Automatically adds `&version=NRSVCE` when deuterocanonical books are in the reading list
+- Works for all lectionaries (searches both `fields` and `description` for references)
+- Added 17 new tests for combined links functionality
 
 ### Completed Refactoring (November 2025)
 

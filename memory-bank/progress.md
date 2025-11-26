@@ -4,10 +4,11 @@
 
 ### Core Features
 - ✅ All 6 enabled lectionaries fetch and display correctly
-- ✅ Discord commands: `lectionary`, `subscribe`, `unsubscribe`, `time`, `help`, `about`
+- ✅ Discord commands: `lectionary`, `subscribe`, `unsubscribe`, `time`, `help`, `about`, `combinedlinks`
 - ✅ Subscription system with per-guild settings
 - ✅ Scheduled delivery via task loop (every 10 minutes, hourly triggers)
 - ✅ Bible Gateway links in embed descriptions
+- ✅ **Combined Bible Gateway links** - single "Read all on Bible Gateway" link at end of embeds
 - ✅ PostgreSQL persistence for settings and subscriptions
 
 ### Code Quality
@@ -15,7 +16,7 @@
 - ✅ Database operations abstracted into repositories
 - ✅ Lectionary management centralized in registry
 - ✅ Logger shadowing anti-pattern fixed
-- ✅ 106 passing tests covering unit, integration, and E2E scenarios
+- ✅ 123 passing tests covering unit, integration, and E2E scenarios
 
 ### Supported Lectionaries
 | Lectionary | Status | Source |
@@ -49,6 +50,7 @@
 1. Greek Orthodox lectionary disabled due to website structure changes
 2. Revised Common lectionary disabled but code remains for future use
 3. All HTTP calls are synchronous (works but not optimal for async Discord bot)
+4. `!combinedlinks` command not responding - needs debugging (combined links feature itself works)
 
 ## Evolution of Project Decisions
 
