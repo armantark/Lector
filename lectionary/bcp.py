@@ -41,7 +41,7 @@ class BookOfCommonPrayer(Lectionary):
         return [{
             'title': self.title,
             'description': '\n'.join(bible_url.convert(reading) for reading in self.readings),
-            'footer': {'text': 'Copyright © BibleGateway.'},
+            'footer': {'text': 'Source: biblegateway.com'},
             'author': {
                 'name': 'The Book of Common Prayer',
                 'url': self.url

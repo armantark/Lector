@@ -301,7 +301,7 @@ class ArmenianLectionary(Lectionary):
                 }
             ]
 
-        footer_text = "Copyright © VEMKAR."
+        footer_text = "Source: armenianscripture.wordpress.com"
         if self.using_previous_day:
             footer_text = "⚠️ Showing previous day's readings (today's not yet posted)\n" + footer_text
         

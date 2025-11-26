@@ -212,7 +212,7 @@ class CatholicLectionary(Lectionary):
             'title': page.title,
             'description': page.desc,
             'color': self.color,
-            'footer': {'text': page.footer + '\nCopyright © USCCB.'},
+            'footer': {'text': page.footer + '\nSource: bible.usccb.org'},
             'author': {'name': 'Catholic Lectionary', 'url': page.url},
             'fields': self._build_fields_for_page(page),
         }

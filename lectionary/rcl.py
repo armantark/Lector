@@ -224,8 +224,7 @@ class RevisedCommonLectionary(Lectionary):
                 ),
                 'color': self.color,
                 'footer': {
-                    'text': 'Revised Common Lectionary, Copyright © 1992 '
-                            'Consultation on Common Texts. Used by permission.'},
+                    'text': 'Source: lectionary.library.vanderbilt.edu'},
                 'author': {
                     'name': 'Revised Common Lectionary',
                     'url': self.url

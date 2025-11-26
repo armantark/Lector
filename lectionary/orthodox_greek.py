@@ -112,7 +112,7 @@ class OrthodoxGreekLectionary(Lectionary):
             {
                 'title': self.title,
                 'color': 0xA68141,  # Golden brown
-                'footer': {'text': 'Copyright © 2017 Greek Orthodox Archdiocese of America.'},
+                'footer': {'text': 'Source: goarch.org'},
                 'thumbnail': {'url': self.icon_url},
                 'author': {
                     'name': 'Greek Orthodox Lectionary',
