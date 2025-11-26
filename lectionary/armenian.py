@@ -90,6 +90,7 @@ class ArmenianLectionary(Lectionary):
     def _fetch_initial_soup(self) -> Optional[Any]:
         """
         Fetch the initial lectionary page and return the parsed soup object.
+        Returns None if the page doesn't exist (e.g., not yet posted for today).
         """
         if self.url is None or self.url == '':
             _logger.error('Failed to generate Armenian lectionary URL')
@@ -97,7 +98,7 @@ class ArmenianLectionary(Lectionary):
         url_to_fetch = self.url  # Save URL before any potential clearing
         initial_soup = self.fetch_and_parse_html(url_to_fetch)
         if initial_soup is None:
-            _logger.error(f'Failed to fetch initial Armenian lectionary page: {url_to_fetch}')
+            _logger.warning(f'Armenian lectionary page not available: {url_to_fetch} (may not be posted yet)')
             return None
         return initial_soup
 
@@ -275,7 +276,16 @@ class ArmenianLectionary(Lectionary):
         """
         if not self.ready:
             _logger.warning("Data not ready for JSON build.")
-            return []
+            # Return a helpful message instead of empty list
+            return [
+                {
+                    "title": "Armenian Lectionary",
+                    "color": 0x202225,
+                    "description": "Today's readings are not yet available.\n\nThe source blog may not have posted today's readings yet. Please try again later.",
+                    "footer": {"text": "Source: armenianscripture.wordpress.com"},
+                    "author": {"name": "Armenian Lectionary", "url": self.url or "https://armenianscripture.wordpress.com"},
+                }
+            ]
 
         json = [
             {
