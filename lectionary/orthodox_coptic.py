@@ -71,7 +71,7 @@ class OrthodoxCopticLectionary(Lectionary):
             'title': self.title,
             'description': self.subtitle,
             'color': 0xF2DB87,
-            'footer': {'text': 'Copyright © St. Mark\'s Coptic Orthodox Church, Jersey City, NJ.'},
+            'footer': {'text': 'Source: copticchurch.net'},
             'author': {
                 'name': 'Coptic Orthodox Lectionary',
                 'url': self.url

@@ -72,7 +72,7 @@ class OrthodoxAmericanLectionary(Lectionary):
             {
                 'title': self.title,
                 'description': self.build_description(),
-                'footer': {'text': 'Copyright © Orthodox Church in America.'},
+                'footer': {'text': 'Source: oca.org'},
                 'author': {
                     'name': 'American Orthodox Lectionary',
                     'url': self.url
