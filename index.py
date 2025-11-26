@@ -5,7 +5,6 @@ import sys
 import traceback
 
 import discord
-from discord import app_commands
 from discord.ext import commands
 
 from helpers import bot_config
@@ -17,8 +16,6 @@ logging.basicConfig(level=logging.INFO)
 config = bot_config.Config()
 intents = discord.Intents.default()
 intents.message_content = True
-client = discord.Client(intents=intents)
-tree = app_commands.CommandTree(client)
 bot = commands.Bot(command_prefix=config.prefix, intents=intents)
 bot.remove_command('help')
 

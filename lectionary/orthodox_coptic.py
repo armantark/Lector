@@ -1,5 +1,6 @@
 from helpers import bible_url, date_expand
-from lectionary.lectionary import Lectionary
+from helpers.bible_reference import normalize_coptic_reference
+from lectionary.base import Lectionary
 
 
 class OrthodoxCopticLectionary(Lectionary):
@@ -12,38 +13,9 @@ class OrthodoxCopticLectionary(Lectionary):
     @staticmethod
     def clean_reference(string):
         """
-        Function to clean a Bible reference, so it's ready for the url converter
+        Normalize a Bible reference using the shared Coptic reference helper.
         """
-        replacements = {
-            '  & ': '; ',
-            ' - ': '-',
-            'Matt ': 'Matthew ',
-            'Mk ': 'Mark ',
-            'Lk ': 'Luke ',
-            'Rom ': 'Romans ',
-            '1Cor ': '1 Corinthians ',
-            '2Cor ': '2 Corinthians ',
-            '1Corinthians ': '1 Corinthians ',
-            '2Corinthians ': '2 Corinthians ',
-            'Col ': 'Colossians ',
-            'Heb ': 'Hebrews ',
-            '1Pet ': '1 Peter ',
-            '1Peter ': '1 Peter ',
-            '2Pet ': '2 Peter ',
-            '2Peter ': '2 Peter ',
-            '1Jn ': '1 John ',
-            '2Jn ': '2 John ',
-            '3Jn ': '3 John ',
-            '1John ': '1 John ',
-            '2John ': '2 John ',
-            '3John ': '3 John ',
-            'Jn ': 'John '
-        }
-
-        for item in replacements:
-            string = string.replace(item, replacements[item])
-
-        return string
+        return normalize_coptic_reference(string)
 
     def regenerate(self):
         super().regenerate()

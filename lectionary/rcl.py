@@ -6,13 +6,20 @@ from bs4 import BeautifulSoup
 
 from helpers import bible_url
 from helpers import date_expand
+from lectionary.base import Lectionary
 
 
-class RevisedCommonLectionary:
+class RevisedCommonLectionary(Lectionary):
+    """
+    Revised Common Lectionary implementation.
+    
+    This lectionary uses a sections dict for organizing readings rather than
+    a flat readings list. Currently disabled in the cog but kept for future use.
+    """
+
     def __init__(self):
-        self.last_regeneration = datetime.datetime.min
+        super().__init__()  # Initialize base class attributes
         self.url = 'https://lectionary.library.vanderbilt.edu/daily.php'
-        self.today = datetime.date.today()
         self.title = f'Daily Readings for {date_expand.expand(self.today)}'
         self.sections = {}
         self.color = self._get_color()
@@ -20,12 +27,9 @@ class RevisedCommonLectionary:
         self.regenerate()
 
     def clear(self):
-        self.today = None
-        self.url = ''
-        self.title = ''
+        super().clear()  # Clear base class attributes
         self.sections = {}
         self.color = None
-        self.ready = False
 
     @staticmethod
     def _explode_reference_list(text):
@@ -47,8 +51,11 @@ class RevisedCommonLectionary:
             for item in text.split('; ')]
 
     def regenerate(self):
-        self.last_regeneration = datetime.datetime.now()
-        soup = self.fetch_and_parse_html()
+        super().regenerate()  # Update last_regeneration and today from base class
+        self.title = f'Daily Readings for {date_expand.expand(self.today)}'
+        self.sections = {}
+        
+        soup = self._fetch_page()
         if soup is None:
             return
 
@@ -57,7 +64,8 @@ class RevisedCommonLectionary:
         lines = soup.select('ul[class="daily_day"]>li')
         self.process_lines(lines)
 
-    def fetch_and_parse_html(self):
+    def _fetch_page(self):
+        """Fetch and parse the RCL daily readings page."""
         try:
             r = requests.get(self.url)
             if r.status_code != 200:
@@ -68,6 +76,19 @@ class RevisedCommonLectionary:
             return None
 
         return BeautifulSoup(r.text, 'html.parser')
+
+    # Abstract method implementations
+    def extract_title(self, soup):
+        pass  # Title is set directly in regenerate
+
+    def extract_subtitle(self, soup):
+        pass  # Not used by RCL
+
+    def extract_readings(self, soup):
+        pass  # RCL uses sections instead of readings list
+
+    def extract_synaxarium(self, soup):
+        pass  # Not used by RCL
 
     def process_lines(self, lines):
         # Generate the regex pattern matching today's date
