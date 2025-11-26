@@ -107,7 +107,9 @@ class LectionaryRegistry:
             index: The lectionary index
             
         Returns:
-            The lectionary instance, or None if invalid index or regeneration failed
+            The lectionary instance, or None if invalid index.
+            Note: Returns the instance even if not ready (lectionaries should
+            handle this gracefully in build_json with a helpful message).
         """
         if not (0 <= index < len(self._instances)):
             return None
@@ -117,8 +119,7 @@ class LectionaryRegistry:
         if self._needs_regeneration(lec):
             lec.regenerate()
             if not lec.ready:
-                _logger.error(f'Lectionary {type(lec).__name__} not regenerated correctly.', exc_info=True)
-                return None
+                _logger.warning(f'Lectionary {type(lec).__name__} not ready (source may be unavailable)')
         
         return lec
 
