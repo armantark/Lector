@@ -94,9 +94,10 @@ class ArmenianLectionary(Lectionary):
         if self.url is None or self.url == '':
             _logger.error('Failed to generate Armenian lectionary URL')
             return None
-        initial_soup = self.fetch_and_parse_html(self.url)
+        url_to_fetch = self.url  # Save URL before any potential clearing
+        initial_soup = self.fetch_and_parse_html(url_to_fetch)
         if initial_soup is None:
-            _logger.error(f'Failed to fetch initial Armenian lectionary page: {self.url}')
+            _logger.error(f'Failed to fetch initial Armenian lectionary page: {url_to_fetch}')
             return None
         return initial_soup
 
@@ -236,8 +237,11 @@ class ArmenianLectionary(Lectionary):
         import datetime
 
         today = datetime.date.today()
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
         try:
-            r = requests.get(ARMENIAN_CHURCH_GE_URL, headers={"User-Agent": ""})
+            r = requests.get(ARMENIAN_CHURCH_GE_URL, headers=headers, timeout=30)
             r.raise_for_status()
         except requests.exceptions.RequestException as e:
             _logger.error(f"Failed to get synaxarium: {e}", exc_info=True)
