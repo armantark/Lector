@@ -1,18 +1,86 @@
 # Lector Bot
-![version](https://img.shields.io/badge/version-alpha-%23ec4242) ![python](https://img.shields.io/badge/python-3.8.6-green) ![library](https://img.shields.io/badge/library-discord.py-blue)
 
-A Discord bot for fetching and subscribing to various Christian lectionaries. There are 2 lectionaries currently implemented:
-1. [Russian Orthodox](https://www.holytrinityorthodox.com/calendar/)
-2. [Revised Common](https://lectionary.library.vanderbilt.edu/daily.php)
+![version](https://img.shields.io/badge/version-alpha-%23ec4242)
+![python](https://img.shields.io/badge/python-3.11-green)
+![library](https://img.shields.io/badge/library-discord.py-blue)
 
-### Features
-* Request copies of the daily lectionaries with easy-to-use commands
-* Subscribe channels for daily lectionary updates
+Lector is a Discord bot that fetches daily Christian lectionary readings and posts them to Discord channels on demand or on a schedule.
 
-### Logo
-The Lector logo is a cropped version of a [public domain image](https://flic.kr/p/7de5pN) from [Flikr](https://www.flickr.com/).
+## Features
 
-### Copyright Info
+- Fetch daily readings with simple commands
+- Subscribe channels for automatic daily delivery
+- Per-guild schedule configuration
+- Bible Gateway links for each reading
+- Optional combined Bible Gateway link for all references in one page
+
+## Supported Lectionaries
+
+Enabled:
+
+1. Armenian
+2. Book of Common Prayer
+3. Catholic / USCCB
+4. American Orthodox / OCA
+5. Coptic Orthodox
+6. Russian Orthodox
+
+Disabled (kept in codebase):
+
+1. Greek Orthodox
+2. Revised Common Lectionary
+
+## Quick Start
+
+### Requirements
+
+- Python 3.11+
+- PostgreSQL
+- A Discord bot token
+
+### Environment Variables
+
+Create a `.env` file:
+
+```env
+token=<discord_bot_token>
+prefix=!
+DATABASE_URL=postgres://user:pass@host:port/db
+log_webhook=<optional_webhook_url>
+```
+
+### Install and Run
+
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python index.py
+```
+
+### Run Tests
+
+```bash
+python -m unittest tests.tests -v
+```
+
+## Common Commands
+
+- `!lectionary <name>`
+- `!subscribe <name> <#channel>`
+- `!unsubscribe <name> <#channel>`
+- `!time <hour>`
+- `!combinedlinks <on|off>`
+
+## Git Author Identity
+
+To keep GitHub contributions attributed to `armantark`, use the `armantark` identity for commit author and committer metadata, and use an email address that belongs to the `armantark` GitHub account.
+
+## Attribution
+
 The lectionaries are the works of their respective owners.
-1. [Holy Trinity Russian Orthodox Church](https://www.holytrinityorthodox.com/) provides an [API interface](https://www.holytrinityorthodox.com/calendar/doc/) for integrating their calendar into websites, so a copyright notice crediting them has hence been included in the software ex fide bona.
-2. [The Consultation on Common Texts](http://www.commontexts.org/) permits reproductions of the RCL table of citations under [certain conditions](http://www.commontexts.org/rcl/permissions/), and their copyright notice has been included as specified.
+
+- [Holy Trinity Russian Orthodox Church](https://www.holytrinityorthodox.com/) provides an [API interface](https://www.holytrinityorthodox.com/calendar/doc/) for integrating their calendar into websites.
+- [The Consultation on Common Texts](http://www.commontexts.org/) permits reproductions of the RCL table of citations under [specific conditions](http://www.commontexts.org/rcl/permissions/).
+
+The Lector logo is a cropped version of a [public domain image](https://flic.kr/p/7de5pN) from [Flickr](https://www.flickr.com/).
