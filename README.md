@@ -72,10 +72,6 @@ python -m unittest tests.tests -v
 - `!time <hour>`
 - `!combinedlinks <on|off>`
 
-## Git Author Identity
-
-To keep GitHub contributions attributed to `armantark`, use the `armantark` identity for commit author and committer metadata, and use an email address that belongs to the `armantark` GitHub account.
-
 ## Attribution
 
 The lectionaries are the works of their respective owners.
